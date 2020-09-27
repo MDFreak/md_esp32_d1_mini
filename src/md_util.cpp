@@ -1,6 +1,8 @@
 #include "md_util.h"
 
-int setBit(const int inWert, const int inBit, const bool inVal)
+//--------------------------
+// Setzen / Loeschen eines Bit in einer 16-Bit Flags-Wort
+uint16_t setBit(const uint16_t inWert, const uint16_t inBit, const bool inVal)
 {
   int ret;
   if (inVal)    // Error gefunden
@@ -11,6 +13,7 @@ int setBit(const int inWert, const int inBit, const bool inVal)
   { // Fehler loeschen
     ret = inWert & (0xffff ^ inBit);
   }
+/*
   #ifdef SERIAL_DEBUG
     Serial.print("  inWert="); Serial.print(inWert);
     Serial.print("  inBit="); Serial.print(inBit);
@@ -18,5 +21,6 @@ int setBit(const int inWert, const int inBit, const bool inVal)
     Serial.print("  inVal="); Serial.print(inVal);
     Serial.print("  ret="); Serial.print(ret);
   #endif
+*/
   return ret;
 }

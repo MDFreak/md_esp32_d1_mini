@@ -7,8 +7,8 @@
   #define CHECK_CONFIG
   // --- User-Interface
   #define USE_TOUCHSCREEN       // Die hoechtse Nr gewinnt
-  #define USE_DEFTOUCH          // Demo Touch-Ablauf
-  //#define USE_MD_TOUCH1         // Projekt-Ablauf 1
+  //#define USE_DEFTOUCH          // Demo Touch-Ablauf
+  #define USE_MD_TOUCH1         // Projekt-Ablauf 1
   //#define USE_MD_TOUCH2         // Projekt-Ablauf 2
   //#define USE_MD_TOUCH3         // Projekt-Ablauf 3
   //#define USE_MD_TOUCH4         // Projekt-Ablauf 3
@@ -67,12 +67,19 @@
 
   // --- User-Interface
   #ifdef USE_TOUCHSCREEN
-    #define TOUCH_CYCLE  10ul       // Intervallzeit [us]
-    #define TOUCH_ERRBIT 0x01       // Error-Flag im Status
+    #define DISP_HOCH_O    0        // Hochformat - USB oben
+    #define DISP_QUER_L    1        // Querformat - USB links
+    #define DISP_HOCH_U    2        // Hochformat - USB unten
+    #define DISP_QUER_R    3        // Querformat - USB rechts
+
+    #define DISP_ORIENT    DISP_HOCH_O
+    #define DISP_CYCLE     1000ul   // Intervallzeit [us]
+    #define TOUCH_ERRBIT   0x01     // Error-Flag im Status
   #endif
 
   // --- Netzwerk
   #ifdef USE_WEBSERVER
+    #define WIFI_CONN_CYCLE 4000ul  // Intervallzeit fuer Recoonect [us]
     #define WEBSERVER_CYCLE 1000ul  // Intervallzeit [us]
     #define SERVER_ERRBIT   0x02    // Error-Flag im Status
   #endif

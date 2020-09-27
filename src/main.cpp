@@ -2,58 +2,34 @@
 
 // ------ System ------------------------
 
-  int           md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
+uint16_t     md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
 
-  #ifdef BOARD_LED
-    const int  led = BOARD_LED;
-  #endif
+#ifdef BOARD_LED
+  const int  led = BOARD_LED;
+#endif
 
 // ------ Netzwerk ----------------------
 
-  #ifdef USE_WIFI
-  #endif
+#ifdef USE_WIFI
+  unsigned long wifiTime   = 0;     // Zeit der letzten Ausgabe [us]
+#endif
 
-  #ifdef USE_WEBSERVER
-    unsigned long serverTime = 0;     // Zeit der letzten Ausgabe [us]
-  #endif // USE_WEBSERVER
+#ifdef USE_WEBSERVER
+  unsigned long serverTime = 0;     // Zeit der letzten Ausgabe [us]
+#endif // USE_WEBSERVER
 
 // ------ User-Interface
-  #ifdef USE_TOUCHSCREEN
-    unsigned long touchTime = 0;      // Zeit der letzten Abfrage [us]
-  #endif // USE_TOUCHSCREEN
-
+#ifdef USE_TOUCHSCREEN
+  unsigned long dispTime   = 0;      // Zeit der letzten Abfrage [us]
+  uint8_t       ze         = 1;      // aktuelle Schreibzeile
+#endif // USE_TOUCHSCREEN
 
 // --------------------------------
 
-void setup()
-{
-  bool ret = false;
-  Serial.begin(115200);
-  Serial.println(); Serial.println("setup start ...");
-
-  #ifdef USE_TOUCHSCREEN
-    #ifdef USE_DEFTOUCH
-      ret = md_start_deftouch();
-    #elif USE_MD_TOUCH1
-      ret = md_start_md1touch();
-    #elif USE_MD_TOUCH2
-      ret = md_start_md1touch();
-    #elif USE_MD_TOUCH3
-      ret = md_start_md1touch();
-    #elif USE_MD_TOUCH4
-      ret = md_start_md1touch();
-    #endif
-            #ifdef SERIAL_DEBUG
-              Serial.print("startWIFI ret="); Serial.print(ret);
-            #endif
-    md_error = setBit(md_error, TOUCH_ERRBIT, ret);
-            #ifdef SERIAL_DEBUG
-              Serial.print("  md_error="); Serial.println(md_error);
-            #endif
-  #endif
-
-  #ifdef USE_WIFI
-    ret = md_startWIFI();
+#ifdef USE_WIFI
+  void startWIFI()
+  {
+    bool ret = md_startWIFI();
             #ifdef SERIAL_DEBUG
               Serial.print("startWIFI ret="); Serial.print(ret);
             #endif
@@ -61,18 +37,53 @@ void setup()
             #ifdef SERIAL_DEBUG
               Serial.print("  md_error="); Serial.println(md_error);
             #endif
-  #endif // USE_WIFI
+  }
+#endif // USE_WIFI
 
-  #ifdef USE_WEBSERVER
-    ret = md_startServer();
+#ifdef USE_WEBSERVER
+  void startWebServer()
+  {
+    bool ret = md_startServer();
             #ifdef SERIAL_DEBUG
-              Serial.print("startServer ret="); Serial.print(ret);
+//              Serial.print("startServer ret="); Serial.print(ret);
             #endif
     md_error = setBit(md_error, SERVER_ERRBIT, ret);
             #ifdef SERIAL_DEBUG
+//              Serial.print("  md_error="); Serial.println(md_error);
+            #endif
+  }
+#endif
+
+#ifdef USE_TOUCHSCREEN
+  void startTouch()
+  {
+    bool ret = md_start_touch();
+            #ifdef SERIAL_DEBUG
+              Serial.print("startWIFI ret="); Serial.print(ret);
+            #endif
+    md_error = setBit(md_error, TOUCH_ERRBIT, ret);
+            #ifdef SERIAL_DEBUG
               Serial.print("  md_error="); Serial.println(md_error);
             #endif
-  #endif // USE_WEBSERVER
+  }
+#endif
+// --------------------------------
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println(); Serial.println("setup start ...");
+
+  #ifdef USE_TOUCHSCREEN
+    startTouch();
+  #endif
+
+  #ifdef USE_WIFI
+    startWIFI();
+    #ifdef USE_WEBSERVER
+      startWebServer();
+    #endif
+  #endif
 
   Serial.println();
   Serial.print("... end setup -- error="); Serial.println(md_error);
@@ -83,24 +94,47 @@ void setup()
 
 void loop()
 {
-  unsigned long curTime   = millis();        // aktuelle Zeit [us]
+  unsigned long curTime   = millis();        // actual time [us]
 
-  #ifdef USE_WEBSERVER
-    if (curTime - serverTime >= WEBSERVER_CYCLE)
+  // restart WIFI if offline
+  #ifdef USE_WIFI
+    if (curTime - wifiTime >= WIFI_CONN_CYCLE)
     {
-      uint8_t ret = md_handleClient();
-//      md_error = setBit(md_error, SERVER_ERRBIT, ret);
-      if (md_error & SERVER_ERRBIT)
+      wifiTime = curTime;
+      if(md_error & WIFI_ERRBIT)
       {
-        #ifdef SERIAL_DEBUG
-//          Serial.println("Server is down");
-        #endif
+        startWIFI();
       }
     }
   #endif
 
+  // run webserver - restart on error
+  #ifdef USE_WEBSERVER
+    if (curTime - serverTime >= WEBSERVER_CYCLE)
+    {
+      dispTime = serverTime;
+      if (md_error & SERVER_ERRBIT)
+      {
+        startWebServer();
+      }
+      else
+      {
+        bool ret = md_handleClient();
+        md_error = setBit(md_error, SERVER_ERRBIT, ret);
+      }
+    }
+  #endif
+
+  // handle touch input / output
   #ifdef USE_TOUCHSCREEN
-    md_run_deftouch();
+    md_run_touch();
+    if (curTime - dispTime >= DISP_CYCLE)
+    {
+      dispTime = curTime;
+      md_writeDisp("Zeile ", ze, ze);
+      ze++;
+      if (ze > 10) { ze = 1; }
+    }
   #endif // USE_DISPLAY
 
 }

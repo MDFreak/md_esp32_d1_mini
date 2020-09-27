@@ -7,6 +7,7 @@
   #include <ESPmDNS.h>
   #include "config.h"
 
+  bool md_scanWIFI();
   bool md_startWIFI();
   bool md_startServer();
   bool md_handleClient();

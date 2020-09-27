@@ -91,7 +91,7 @@ void handleNotFound()
 
 // ------ Setup-Funktionen --------------------------
 
-bool md_startWIFI()
+bool md_scanWIFI()
 {
   bool ret = false;
   // Set WiFi to station mode and disconnect from an AP if it was previously connected
@@ -126,55 +126,64 @@ bool md_startWIFI()
       delay(10);
     }
     Serial.println("");
+  }
+  return ret;
+}
 
-    WiFi.begin(ssid, password);
+bool md_startWIFI()
+{
+  bool ret = false;
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+  WiFi.begin(ssid, password);
+  Serial.println("");
+
+  // Wait for connection
+  uint8_t timeout = (uint8_t) WIFI_SCAN_TOUT;
+  while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
+  {
+    delay(WIFI_SCAN_DELAY);
+    Serial.print(".");
+    timeout--;
+  }
+
+  if (WiFi.status() == WL_CONNECTED)
+  {
     Serial.println("");
+    Serial.print("Connected to ");
+    Serial.println(ssid);
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
 
-    // Wait for connection
-    uint8_t timeout = (uint8_t) WIFI_SCAN_TOUT;
-    while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
+    if (MDNS.begin("esp32"))
     {
-      delay(WIFI_SCAN_DELAY);
-      Serial.print(".");
-      timeout--;
+      Serial.println("MDNS responder started");
     }
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      Serial.println("");
-      Serial.print("Connected to ");
-      Serial.println(ssid);
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
-
-      if (MDNS.begin("esp32"))
-      {
-        Serial.println("MDNS responder started");
-      }
-    }
-    else
-    {
-      Serial.println("Connection failed -> timout");
-      ret = true;
-    }
+  }
+  else
+  {
+    Serial.println("Connection failed -> timout");
+    ret = true;
   }
   return ret;
 }
 
 bool md_startServer()
 {
-  server.on("/", handleRoot);
-  server.on("/test.svg", drawGraph);
-  server.on("/inline", []() {
-    server.send(200, "text/plain", "this works as well");
-    });
-  server.onNotFound(handleNotFound);
-  server.begin();
-  Serial.println("HTTP server started");
-
-  Serial.println(); Serial.println("Setup done");
-
-  return false;
+//  if (WiFi.status() != WL_CONNECTED)
+//  {
+    server.on("/", handleRoot);
+    server.on("/test.svg", drawGraph);
+    server.on("/inline", []() {
+      server.send(200, "text/plain", "this works as well");
+      });
+    server.onNotFound(handleNotFound);
+    server.begin();
+    Serial.println("HTTP server started");
+    return false;
+//  }
 }
 
 bool md_handleClient()

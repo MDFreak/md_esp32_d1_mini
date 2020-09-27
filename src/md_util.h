@@ -4,6 +4,6 @@
   #include <Arduino.h>
   #include "config.h"
 
-  int setBit(int inWert, int inBit, bool inVal);
+  uint16_t setBit(uint16_t inWert, uint16_t inBit, bool inVal);
 
 #endif
