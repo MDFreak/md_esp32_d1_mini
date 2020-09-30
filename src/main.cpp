@@ -19,10 +19,10 @@ uint16_t     md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
 #endif // USE_WEBSERVER
 
 // ------ User-Interface
-#ifdef USE_TOUCHSCREEN
-  unsigned long dispTime   = 0;      // Zeit der letzten Abfrage [us]
-  uint8_t       ze         = 1;      // aktuelle Schreibzeile
-#endif // USE_TOUCHSCREEN
+
+unsigned long dispTime   = 0;      // Zeit der letzten Abfrage [us]
+uint8_t       ze         = 1;      // aktuelle Schreibzeile
+char          outBuf[2*STAT_LINELEN] = "";
 
 // --------------------------------
 
@@ -57,7 +57,7 @@ uint16_t     md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
 #ifdef USE_TOUCHSCREEN
   void startTouch()
   {
-    bool ret = md_start_touch();
+    bool ret = md_startTouch();
             #ifdef SERIAL_DEBUG
               Serial.print("startWIFI ret="); Serial.print(ret);
             #endif
@@ -71,11 +71,13 @@ uint16_t     md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
 
 void setup()
 {
+  bool ret = false;
+
   Serial.begin(115200);
   Serial.println(); Serial.println("setup start ...");
 
   #ifdef USE_TOUCHSCREEN
-    startTouch();
+    ret = md_startTouch();
   #endif
 
   #ifdef USE_WIFI
@@ -84,7 +86,7 @@ void setup()
       startWebServer();
     #endif
   #endif
-
+  ret = ret;
   Serial.println();
   Serial.print("... end setup -- error="); Serial.println(md_error);
   Serial.println();
@@ -127,12 +129,14 @@ void loop()
 
   // handle touch input / output
   #ifdef USE_TOUCHSCREEN
-    md_run_touch();
+    md_runTouch(outBuf);
     if (curTime - dispTime >= DISP_CYCLE)
     {
       dispTime = curTime;
-      md_writeDisp("Zeile ", ze, ze);
+      md_wrTouch("Zeile ", ze, ze);
       ze++;
+      sprintf(outBuf,"Hallo Zeile %d",ze);
+      md_wrStatus(outBuf, 0);
       if (ze > 10) { ze = 1; }
     }
   #endif // USE_DISPLAY

@@ -1,10 +1,24 @@
 #include "md_webserver.h"
 #include "config.h"
 
-const char *ssid     = WIFI_SSID;
+const char* ssidMAMD = WIFI_MAMD_SSID;
+const char* ssidHM   = WIFI_HM_SSID;
+const char* nossid   = NULL;
 const char *password = WIFI_PW;
 
+// Set Static IP address and Gateway
+#ifdef WIFI_LOCAL_IP
+  //IPAddress local_IP(192, 168, 1, 184);
+  IPAddress local_IP(10,0,0,20);
+  IPAddress gateway(10,0,0,139);
+  IPAddress subnet(255,255,0,0);
+  //IPAddress primaryDNS(8, 8, 8, 8); // optional
+  //IPAddress secondaryDNS(8, 8, 4, 4); // optional
+#endif
+
+char*        ssid = (char*) nossid;
 WebServer    server(80);
+String       header;          // store HTTP-request
 
 // ------ Callback-Funktionen --------------------------
 
@@ -43,13 +57,13 @@ void handleRoot()
       "<html>\
         <head>\
           <meta http-equiv='refresh' content='5'/>\
-          <title>ESP32 Demo</title>\
+          <title>ESP32 Gruss an Mathi</title>\
           <style>\
             body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
           </style>\
         </head>\
         <body>\
-          <h1>Hello from ESP32!</h1>\
+          <h1>Hallo Mathi vom ESP32!</h1>\
           <p>Uptime: %02d:%02d:%02d</p>\
           <img src=\"/test.svg\" />\
         </body>\
@@ -108,43 +122,72 @@ bool md_scanWIFI()
   {
     Serial.println("no networks found");
     ret = true;
+    //return true;
   }
   else
   {
+    bool found = false;
     Serial.print(n);
     Serial.println(" networks found");
     for (int i = 0; i < n; ++i)
     {
       // Print SSID and RSSI for each network found
       Serial.print(i + 1);
-      Serial.print(": ");
+      if (WiFi.SSID(i) == ssidHM)
+      {
+        ssid = (char*) ssidHM;
+        found = true;
+        Serial.print(" used: "); Serial.print(ssid); Serial.print(" - ");
+      }
+      else if (WiFi.SSID(i) == ssidMAMD)
+      {
+        ssid = (char*) ssidMAMD;
+        found = true;
+        Serial.print(" used: "); Serial.print(ssid); Serial.print(" - ");
+      }
       Serial.print(WiFi.SSID(i));
-      Serial.print(" (");
-      Serial.print(WiFi.RSSI(i));
-      Serial.print(")");
+      Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
       Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
       delay(10);
+      if (found == true)
+      {
+        break;
+      }
     }
-    Serial.println("");
   }
+  Serial.println("");
+
   return ret;
 }
 
 bool md_startWIFI()
 {
   bool ret = false;
+// Configures static IP address
   WiFi.mode(WIFI_STA);
+
   WiFi.disconnect();
   delay(100);
 
+  #ifdef WIFI_LOCAL_IP
+//    if ( WiFi.config(local_IP, gateway, subnet /*, primaryDNS, secondaryDNS*/))
+    if ( WiFi.config(local_IP, gateway, subnet /*, primaryDNS, secondaryDNS*/) == false)
+    {
+      Serial.println("STA Failed to configure");
+      //ret = true;
+      return false;
+    }
+  #endif
+
+  ret = md_scanWIFI();
   WiFi.begin(ssid, password);
   Serial.println("");
 
   // Wait for connection
-  uint8_t timeout = (uint8_t) WIFI_SCAN_TOUT;
+  uint8_t timeout = (uint8_t) WIFI_CONN_REP;
   while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
   {
-    delay(WIFI_SCAN_DELAY);
+    delay(WIFI_CONN_DELAY);
     Serial.print(".");
     timeout--;
   }

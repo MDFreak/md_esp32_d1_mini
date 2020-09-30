@@ -11,6 +11,6 @@
 
   #ifdef USE_TOUCHSCREEN
     #include "md_touch.h"
-  #endif // USE_DISPLAY
+  #endif // USE_TOUCHSCREEN
 
 #endif // MAIN_H

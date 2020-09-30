@@ -1,22 +1,25 @@
 #ifndef _CONFIG_H_
   #define _CONFIG_H_
 
-  // ------ Modul-Auswahl ---------------
+  // --------------------------------------------------
+  // ------ Modul-Auswahl -----------------------------
+  // --------------------------------------------------
+  //
   // --- System konfigrieren
   #define SERIAL_DEBUG
   #define CHECK_CONFIG
   // --- User-Interface
   #define USE_TOUCHSCREEN       // Die hoechtse Nr gewinnt
-  //#define USE_DEFTOUCH          // Demo Touch-Ablauf
-  #define USE_MD_TOUCH1         // Projekt-Ablauf 1
-  //#define USE_MD_TOUCH2         // Projekt-Ablauf 2
-  //#define USE_MD_TOUCH3         // Projekt-Ablauf 3
-  //#define USE_MD_TOUCH4         // Projekt-Ablauf 3
   // --- Netzwerk
   #define USE_WIFI
   #define USE_WEBSERVER
+  // --- Projekte
+  #define USE_PROJECT     1     // special Projekt-Ablauf (0=def, 1=test)
 
-  // ------- Konfiguration testen
+
+  // --------------------------------------------------
+  // ------- Konfiguration testen ---------------------
+  // --------------------------------------------------
   #ifdef CHECK_CONFIG
     // fuer WEBSERVER muss WIFI aktiv sein
     #ifdef USE_WEBSERVER
@@ -24,72 +27,53 @@
         #define USE_WIFI
       #endif
     #endif
-
-    // nur eine Anwendung darf aktiv sein
-    #if defined(USE_MD_TOUCH1) && defined(USE_DEFTOUCH)
-      #undef USE_DEFTOUCH
-    #endif
-
-    #if defined(USE_MD_TOUCH2) && defined(USE_DEFTOUCH)
-      #undef USE_DEFTOUCH
-    #endif
-    #if defined(USE_MD_TOUCH2) && defined(USE_MD_TOUCH1)
-      #undef USE_MD_TOUCH1
-    #endif
-
-    #if defined(USE_MD_TOUCH3) && defined(USE_DEFTOUCH)
-      #undef USE_DEFTOUCH
-    #endif
-    #if defined(USE_MD_TOUCH3) && defined(USE_MD_TOUCH1)
-      #undef USE_MD_TOUCH1
-    #endif
-    #if defined(USE_MD_TOUCH3) && defined(USE_MD_TOUCH2)
-      #undef USE_MD_TOUCH2
-    #endif
-
-    #if defined(USE_MD_TOUCH4) && defined(USE_DEFTOUCH)
-      #undef USE_DEFTOUCH
-    #endif
-    #if defined(USE_MD_TOUCH4) && defined(USE_MD_TOUCH1)
-      #undef USE_MD_TOUCH1
-    #endif
-    #if defined(USE_MD_TOUCH4) && defined(USE_MD_TOUCH2)
-      #undef USE_MD_TOUCH1
-    #endif
-    #if defined(USE_MD_TOUCH4) && defined(USE_MD_TOUCH3)
-      #undef USE_MD_TOUCH1
-    #endif
   #endif
 
-  // ------ SW-Konfigurationen ---------------
+  // --------------------------------------------------
+  // ------ SW-Konfigurationen ------------------------
+  // --------------------------------------------------
+
   // --- System
-  #define BOARD_LED   1
+  // Error Status
+  #define TOUCH_ERRBIT     0x01     // Error-Flag im Error-Status
+  #define SERVER_ERRBIT    0x02     // Error-Flag im Status
+  #define WIFI_ERRBIT      0x04    // Error-Flag im Status
+
+  //#define LIFE_LED         23
 
   // --- User-Interface
-  #ifdef USE_TOUCHSCREEN
-    #define DISP_HOCH_O    0        // Hochformat - USB oben
-    #define DISP_QUER_L    1        // Querformat - USB links
-    #define DISP_HOCH_U    2        // Hochformat - USB unten
-    #define DISP_QUER_R    3        // Querformat - USB rechts
 
-    #define DISP_ORIENT    DISP_HOCH_O
+  // output status line
+  #define STAT_LINELEN     20       // length of status line
+  #define STAT_TIMEMIN     200ul    // min time to display status
+  #define STAT_TIMEDEF    5000u     // default time to clear status
+
+  #ifdef USE_TOUCHSCREEN
+    #define DISP_ORIENT    0        // 0:USB oben, 1:USB links, 2:USB unten, 3:USB rechts
     #define DISP_CYCLE     1000ul   // Intervallzeit [us]
-    #define TOUCH_ERRBIT   0x01     // Error-Flag im Status
   #endif
 
   // --- Netzwerk
   #ifdef USE_WEBSERVER
-    #define WIFI_CONN_CYCLE 4000ul  // Intervallzeit fuer Recoonect [us]
     #define WEBSERVER_CYCLE 1000ul  // Intervallzeit [us]
-    #define SERVER_ERRBIT   0x02    // Error-Flag im Status
   #endif
 
   #ifdef USE_WIFI
-    #define WIFI_SSID "MAMD-HomeG"
-    #define WIFI_PW   "ElaNanniRalf3"
-    #define WIFI_ERRBIT     0x04    // Error-Flag im Status
-    #define WIFI_SCAN_DELAY 500     // Scan-Abstand [ms]
-    #define WIFI_SCAN_TOUT  30      // Anzahle der Scan-Wiederholungen
+    #define WIFI_LOCAL_IP
+
+    #if defined(WIFI_LOCAL_IP)
+      #define WIFI_IP       "10.0.0.20"
+      #define WIFI_GATEWAY  "10.0.0.139"
+      #define WIFI_SUBNET   "255.255.255.0"
+    #endif
+    #define LOGIN_MAMD      0           // WLAN Moosgrabenstrasse 26
+    #define LOGIN_HM        1           // WLAN Am Jungberg 9
+    #define WIFI_MAMD_SSID  "MAMD-HomeG"
+    #define WIFI_HM_SSID    "HS-HomeG"
+    #define WIFI_PW         "ElaNanniRalf3"
+    #define WIFI_CONN_DELAY 500     // Scan-Abstand [ms]
+    #define WIFI_CONN_REP   15      // Anzahle der Connect-Schleifen
+    #define WIFI_CONN_CYCLE 4000ul  // Intervallzeit fuer Recoonect [us]
   #endif
   // ------------------------------------------
 
