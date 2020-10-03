@@ -2,6 +2,10 @@
   #define _MAIN_H_
 
   #include <Arduino.h>
+  #include <Wire.h>
+  #include <TimeLib.h>
+  #include "config.h"
+  #include "md_util.h"
   #include "config.h"
   #include "md_util.h"
 

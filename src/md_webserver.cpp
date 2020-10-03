@@ -1,5 +1,4 @@
 #include "md_webserver.h"
-#include "config.h"
 
 const char* ssidMAMD = WIFI_MAMD_SSID;
 const char* ssidHM   = WIFI_HM_SSID;
@@ -16,11 +15,27 @@ const char *password = WIFI_PW;
   //IPAddress secondaryDNS(8, 8, 4, 4); // optional
 #endif
 
+#ifdef USE_NTP_SERVER
+  unsigned int localPort = 2390;
+  IPAddress timeServer(129, 6, 15, 28);
+  const int NTP_PACKET_SIZE = 48;
+  byte packetBuffer[ NTP_PACKET_SIZE];
+  WiFiUDP udp;
+#else
+  const char* ntpServer          = "pool.ntp.org";
+  const long  gmtOffset_sec      = 3600;
+  const int   daylightOffset_sec = 3600;
+  WiFiUDP     ntpUDP;
+//  NTPClient   timeClient(ntpUDP, ntpServer);
+//  NTPClient   timeClient(ntpUDP);
+  bool        newDay             = true;
+#endif
+
 char*        ssid = (char*) nossid;
 WebServer    server(80);
 String       header;          // store HTTP-request
 
-// ------ Callback-Funktionen --------------------------
+// ------ callback functions --------------------------
 
 void drawGraph()
 {
@@ -103,8 +118,12 @@ void handleNotFound()
     #endif
   }
 
-// ------ Setup-Funktionen --------------------------
+// ------ private functions --------------------------
+#ifdef USE_NTP_SERVER
+  unsigned long sendNTPpacket(IPAddress& address);
+#endif
 
+// ------ Setup-Funktionen --------------------------
 bool md_scanWIFI()
 {
   bool ret = false;
@@ -204,6 +223,9 @@ bool md_startWIFI()
     {
       Serial.println("MDNS responder started");
     }
+    #ifdef USE_NTP_SERVER
+      md_initNTPTime();
+    #endif
   }
   else
   {
@@ -229,9 +251,188 @@ bool md_startServer()
 //  }
 }
 
+#ifdef USE_NTP_SERVER
+  bool md_initNTPTime()
+    {
+      // Init and get the time
+      //configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+//      timeClient.setTimeOffset(gmtOffset_sec + daylightOffset_sec);
+//      timeClient.begin();
+      udp.begin(localPort);
+
+      return false;
+    }
+
+  bool md_getTime(time_t *ntpEpoche)
+  {
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      //if(!getLocalTime(intm))
+      //{
+      //  Serial.println("Failed to obtain time");
+      //  return true;
+      //}
+//      *ntpEpoche = timeClient.getEpochTime();
+
+            #ifdef Dummy
+              Serial.println(intm, "%A, %B %d %Y %H:%M:%S");
+              Serial.print("Day of week: ");
+              Serial.println(intm, "%A");
+              Serial.print("Month: ");
+              Serial.println(intm, "%B");
+              Serial.print("Day of Month: ");
+              Serial.println(intm, "%d");
+              Serial.print("Year: ");
+              Serial.println(intm, "%Y");
+              Serial.print("Hour: ");
+              Serial.println(intm, "%H");
+              Serial.print("Hour (12 hour format): ");
+              Serial.println(intm, "%I");
+              Serial.print("Minute: ");
+              Serial.println(intm, "%M");
+              Serial.print("Second: ");
+              Serial.println(intm, "%S");
+
+              Serial.println("Time variables");
+              char timeHour[3];
+              strftime(timeHour,3, "%H", intm);
+              Serial.println(timeHour);
+              char timeWeekDay[10];
+              strftime(timeWeekDay,10, "%A", intm);
+              Serial.println(timeWeekDay);
+              Serial.println();
+            #endif
+      sendNTPpacket(timeServer);
+      delay(1000);
+
+      int cb = udp.parsePacket();
+      cb = cb;
+      udp.read(packetBuffer, NTP_PACKET_SIZE);
+
+      unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+      unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+
+      unsigned long secsSince1900 = highWord << 16 | lowWord;
+
+      const unsigned long seventyYears = 2208988800UL;
+      //unsigned long epoch = secsSince1900 - seventyYears;
+      *ntpEpoche = secsSince1900 - seventyYears
+                 + UTC_TIMEZONE + UTC_SUMMERTIME * 3600;
+      return false;
+    }
+    return true;
+  }
+#endif
+
 bool md_handleClient()
 {
   server.handleClient();
   return false;
 }
 
+#ifdef USE_NTP_SERVER
+  unsigned long sendNTPpacket(IPAddress& address)
+  {
+    //Serial.println("sending NTP packet...");
+    // set all bytes in the buffer to 0
+    memset(packetBuffer, 0, NTP_PACKET_SIZE);
+    // Initialize values needed to form NTP request
+    // (see URL above for details on the packets)
+    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+    packetBuffer[1] = 0;     // Stratum, or type of clock
+    packetBuffer[2] = 6;     // Polling Interval
+    packetBuffer[3] = 0xEC;  // Peer Clock Precision
+    // 8 bytes of zero for Root Delay & Root Dispersion
+    packetBuffer[12]  = 49;
+    packetBuffer[13]  = 0x4E;
+    packetBuffer[14]  = 49;
+    packetBuffer[15]  = 52;
+
+    // all NTP fields have been given values, now
+    // you can send a packet requesting a timestamp:
+    udp.beginPacket(address, 123); //NTP requests are to port 123
+    udp.write(packetBuffer, NTP_PACKET_SIZE);
+    udp.endPacket();
+    return 0;
+  }
+#endif
+
+#ifdef Dummy
+void setup()
+{
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, pass);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+
+
+  udp.begin(localPort);
+
+}
+
+void loop()
+{
+  sendNTPpacket(timeServer);
+  delay(1000);
+
+  int cb = udp.parsePacket();
+
+    udp.read(packetBuffer, NTP_PACKET_SIZE);
+
+    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+
+    unsigned long secsSince1900 = highWord << 16 | lowWord;
+
+    const unsigned long seventyYears = 2208988800UL;
+    unsigned long epoch = secsSince1900 - seventyYears;
+
+    int stund  = (epoch  % 86400L) / 3600 + 1;
+    int minut   = (epoch  % 3600) / 60;
+    int sekunde = epoch % 60;
+    String stunde = String(stund);
+    String minutestring = String(minut);
+    if(minut < 10)
+    {
+      minutestring = "0" + minutestring;
+    }
+
+
+    Serial.println(stunde);
+    Serial.println("|");
+    Serial.println(minutestring);
+    Serial.println("|");
+    Serial.println(sekunde);
+    Serial.println("|");
+
+  delay(10000);
+}
+
+
+unsigned long sendNTPpacket(IPAddress& address)
+{
+  //Serial.println("sending NTP packet...");
+  // set all bytes in the buffer to 0
+  memset(packetBuffer, 0, NTP_PACKET_SIZE);
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+  packetBuffer[1] = 0;     // Stratum, or type of clock
+  packetBuffer[2] = 6;     // Polling Interval
+  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  packetBuffer[12]  = 49;
+  packetBuffer[13]  = 0x4E;
+  packetBuffer[14]  = 49;
+  packetBuffer[15]  = 52;
+
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:
+  udp.beginPacket(address, 123); //NTP requests are to port 123
+  udp.write(packetBuffer, NTP_PACKET_SIZE);
+  udp.endPacket();
+}
+#endif

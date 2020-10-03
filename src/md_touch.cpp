@@ -1,5 +1,6 @@
 #include "md_touch.h"
 
+
 TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 
 // This is the file name used to store the calibration data
@@ -13,35 +14,7 @@ TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 #define REPEAT_CAL false
 
 #if (USE_PROJECT == 0)
-/*
   // Keypad start position, key sizes and spacing
-  #define KEY_X 40 // Centre of key
-  #define KEY_Y 96
-  #define KEY_W 62 // Width and height
-  #define KEY_H 30
-  #define KEY_SPACING_X 18 // X and Y gap
-  #define KEY_SPACING_Y 20
-  #define KEY_TEXTSIZE 1   // Font size multiplier
-
-  // Using two fonts since numbers are nice when bold
-  #define NORM_FONT &FreeSansOblique12pt7b // Key label font 1
-  #define BOLD_FONT &FreeSansBold12pt7b    // Key label font 2
-
-  // Numeric display box size and location
-  #define DISP_X 1
-  #define DISP_Y 10
-  #define DISP_W 238
-  #define DISP_H 50
-  #define DISP_TSIZE 3
-  #define DISP_TCOLOR TFT_CYAN
-
-  // We have a status line for messages
-  #define STATUS_X 120 // Centred on this
-  #define STATUS_Y 65
-
-  // Number length, buffer for storing it and character index
-  #define NUM_LEN 12
-*/
   char numberBuffer[NUM_LEN + 1] = "";
   uint8_t numberIndex = 0;
 
@@ -58,12 +31,10 @@ TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
   TFT_eSPI_Button key[15];
 #endif
 
-//const unsigned long defStatTime = 5000; // Standzeit [ms]
-//const unsigned long minStatTime = 5000; // Standzeit [ms]
-unsigned long statWrTime  = 0;     // last output time [ms]
-unsigned long statClrTime = 0;     // max stay time [ms]
-//  unsigned long statDefTime = STAT_TIMEDEF;
-bool          isStatus    = false; // status text visible
+msTimer clrT     = msTimer();
+msTimer minT     = msTimer(STAT_TIMEMIN);
+bool    isStatus = false; // status text visible
+char    outTxt[STAT_LINELEN + 1] = "";
 
 // ------ private prototypes ----------------
 //void drawKeypad();
@@ -169,7 +140,7 @@ bool md_calTouch()
   return false;
 }
 
-bool md_wrTouch(const char *msg, uint8_t zeile, uint8_t spalte)
+bool md_wrTouch(const char *msg, uint8_t spalte, uint8_t zeile )
 {
   //Serial.print("Write "); Serial.print(msg); Serial.print(" - "); Serial.print(zeile); Serial.print(" - "); Serial.println(spalte);
   tft.setTextPadding(240);
@@ -178,29 +149,41 @@ bool md_wrTouch(const char *msg, uint8_t zeile, uint8_t spalte)
 
   tft.setTextFont(2);
   tft.setTextSize(2);
-//  tft.setCursor(spalte, zeile);
-  tft.drawString(msg, spalte * 13, zeile * 29 - 5 );
+  //tft.setCursor(spalte, zeile);
+  strncpy(outTxt, msg, STAT_LINELEN - spalte + 1);
+//  outTxt[STAT_LINELEN - spalte] = 0;
+  tft.drawString(outTxt, spalte * 13, zeile * 29 - 5 );
   return false;
 }
 
 // Print something in the mini status bar
+bool md_wrStatus()
+{
+  return md_wrStatus("");
+}
+bool md_wrStatus(const char *msg)
+{
+  return md_wrStatus(msg,STAT_TIMEDEF);
+}
 bool md_wrStatus(const char *msg, uint32_t stayTime)
 {
-  unsigned long diffTime = millis() - statWrTime;
+  //unsigned long diffTime = millis() - statWrTime;
   int8_t res = 0; // -1:wait, 0:ok, 1:write , 2:clear
 
   if(strlen(msg) == 0)
   {
-    if ((isStatus == true) && (diffTime >= statClrTime))
+    if ((isStatus == true) && (clrT.TOut() == true))
     { // status is visible && timeout
       res = 2;
       isStatus = false;
-      statClrTime = 0;
+            #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
+              Serial.print((uint32_t) millis()); Serial.println(" Statuszeile loeschen");
+            #endif
     }
   }
   else
   {
-    if ((isStatus == true) && (diffTime < STAT_TIMEMIN))
+    if ((isStatus == true) && (minT.TOut() == false))
     { // visible status has to stay
       res = -1;
     }
@@ -212,16 +195,21 @@ bool md_wrStatus(const char *msg, uint32_t stayTime)
       {
         stayTime = STAT_TIMEDEF;
       }
-      statClrTime = (unsigned long) stayTime;
+            #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
+              Serial.print((uint32_t) millis()); Serial.println(" Statuszeile schreiben");
+            #endif
     }
 
   }
   if (res > 0)
   {
-    char out[STAT_LINELEN + 1] = "";
     if (res == 1)
     {
-      strncpy(out, msg, STAT_LINELEN);
+      strncpy(outTxt, msg, STAT_LINELEN);
+    }
+    else if (res == 2)
+    {
+      outTxt[0] = 0;
     }
     tft.fillRect(STATUS_XLI, STATUS_YOB, STATUS_XRE, STATUS_YUN, STATUS_BCOL);
     tft.setTextPadding(240);
@@ -231,9 +219,12 @@ bool md_wrStatus(const char *msg, uint32_t stayTime)
 
     tft.setTextFont(1);
     tft.setTextSize(2);
-    tft.drawString(out, STATUS_XCENT, STATUS_YCENT);
+    tft.drawString(outTxt, STATUS_XCENT, STATUS_YCENT);
+    minT.startT();              // start timer min time
+    clrT.startT(stayTime);      // start timer max time
+    res = 0;
   }
-  return false;
+  return (res != 0);
 }
 
 // ------ private implementation ------------
@@ -244,7 +235,7 @@ bool md_wrStatus(const char *msg, uint32_t stayTime)
     // Clear the screen
     md_clearTFT();
     //tft.fillRect(0, 300, 240, 320, TFT_BLACK);
-    md_wrStatus("TFT Start", 0);
+    md_wrStatus("TFT started");
     return false;
   }
 

@@ -2,6 +2,7 @@
   #define _MD_TOUCH_H_
 
   #include "config.h"
+  #include "md_util.h"
 
   #ifdef USE_TOUCHSCREEN
     #include "FS.h"
@@ -64,7 +65,9 @@
     bool md_startTouch();
     bool md_calTouch();
     bool md_runTouch(char* pStatus);
-    bool md_wrTouch(const char *msg, uint8_t zeile, uint8_t spalte);
+    bool md_wrTouch(const char *msg, uint8_t spalte, uint8_t zeile);
+    bool md_wrStatus();
+    bool md_wrStatus(const char* msg);
     bool md_wrStatus(const char* msg, uint32_t stayTime);
   #endif
 #endif

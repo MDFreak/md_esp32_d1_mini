@@ -1,42 +1,50 @@
 #include "main.h"
 
-// ------ System ------------------------
+// ------ system ------------------------
 
 uint16_t     md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
+tmElements_t actTime;
+//struct tm* ptm       = &timeinfo;
 
 #ifdef BOARD_LED
   const int  led = BOARD_LED;
 #endif
 
-// ------ Netzwerk ----------------------
+// ------ network ----------------------
 
 #ifdef USE_WIFI
-  unsigned long wifiTime   = 0;     // Zeit der letzten Ausgabe [us]
+  msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
 #endif
 
 #ifdef USE_WEBSERVER
-  unsigned long serverTime = 0;     // Zeit der letzten Ausgabe [us]
+  msTimer servT = msTimer(WEBSERVER_CYCLE);
+#endif // USE_WEBSERVER
+
+#ifdef USE_NTP_SERVER
+  msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
+  time_t  ntpTime = 0;
+  bool    ntpGet  = true;
 #endif // USE_WEBSERVER
 
 // ------ User-Interface
 
-unsigned long dispTime   = 0;      // Zeit der letzten Abfrage [us]
-uint8_t       ze         = 1;      // aktuelle Schreibzeile
+msTimer       dispT      = msTimer(DISP_CYCLE);
+uint32_t      ze         = 1;      // aktuelle Schreibzeile
 char          outBuf[2*STAT_LINELEN] = "";
 
-// --------------------------------
+// --- private functions -----------------
 
 #ifdef USE_WIFI
   void startWIFI()
   {
     bool ret = md_startWIFI();
-            #ifdef SERIAL_DEBUG
-              Serial.print("startWIFI ret="); Serial.print(ret);
-            #endif
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+            Serial.print("startWIFI ret="); Serial.print(ret);
+          #endif
     md_error = setBit(md_error, WIFI_ERRBIT, ret);
-            #ifdef SERIAL_DEBUG
-              Serial.print("  md_error="); Serial.println(md_error);
-            #endif
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+            Serial.print("  md_error="); Serial.println(md_error);
+          #endif
   }
 #endif // USE_WIFI
 
@@ -44,65 +52,94 @@ char          outBuf[2*STAT_LINELEN] = "";
   void startWebServer()
   {
     bool ret = md_startServer();
-            #ifdef SERIAL_DEBUG
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
 //              Serial.print("startServer ret="); Serial.print(ret);
-            #endif
+          #endif
     md_error = setBit(md_error, SERVER_ERRBIT, ret);
-            #ifdef SERIAL_DEBUG
-//              Serial.print("  md_error="); Serial.println(md_error);
-            #endif
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+//            Serial.print("  md_error="); Serial.println(md_error);
+          #endif
   }
-#endif
+#endif // USE_WEBSERVER
 
 #ifdef USE_TOUCHSCREEN
   void startTouch()
   {
     bool ret = md_startTouch();
-            #ifdef SERIAL_DEBUG
-              Serial.print("startWIFI ret="); Serial.print(ret);
-            #endif
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+            Serial.print("startWIFI ret="); Serial.print(ret);
+          #endif
     md_error = setBit(md_error, TOUCH_ERRBIT, ret);
-            #ifdef SERIAL_DEBUG
-              Serial.print("  md_error="); Serial.println(md_error);
-            #endif
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+            Serial.print("  md_error="); Serial.println(md_error);
+          #endif
   }
-#endif
+#endif // USE_TOUCHSCREEN
 // --------------------------------
 
 void setup()
 {
-  bool ret = false;
-
-  Serial.begin(115200);
-  Serial.println(); Serial.println("setup start ...");
-
   #ifdef USE_TOUCHSCREEN
-    ret = md_startTouch();
-  #endif
+    startTouch();
+  #endif // USE_TOUCHSCREEN
+
+  Serial.begin(SER_BAUDRATE);
+        #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+          Serial.println(); Serial.println("setup start ...");
+        #endif
+        #ifdef USE_TOUCHSCREEN
+          while (md_wrStatus("setup start ..."));
+        #endif
 
   #ifdef USE_WIFI
     startWIFI();
+          #ifdef USE_TOUCHSCREEN
+            if ((md_error & WIFI_ERRBIT) == 0)
+            {
+              while (md_wrStatus("WIFI connected"));
+            }
+            else
+            {
+              while (md_wrStatus("WIFI error"));
+            }
+          #endif
+
     #ifdef USE_WEBSERVER
       startWebServer();
+            #ifdef USE_TOUCHSCREEN
+              if ((md_error & SERVER_ERRBIT) == 0)
+              {
+                while (md_wrStatus("WIFI & Server ok"));
+              }
+              else
+              {
+                while (md_wrStatus("Server error"));
+              }
+            #endif
     #endif
+
+    #ifdef USE_NTP_SERVER
+      md_initNTPTime();
+    #endif
+
   #endif
-  ret = ret;
-  Serial.println();
-  Serial.print("... end setup -- error="); Serial.println(md_error);
-  Serial.println();
+
+  #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+    Serial.println();
+    Serial.print("... end setup -- error="); Serial.println(md_error);
+    Serial.println();
+  #endif
 }
 
 // --------------------------------
 
 void loop()
 {
-  unsigned long curTime   = millis();        // actual time [us]
-
   // restart WIFI if offline
   #ifdef USE_WIFI
-    if (curTime - wifiTime >= WIFI_CONN_CYCLE)
+    if(wifiT.TOut())
     {
-      wifiTime = curTime;
+      wifiT.startT();
       if(md_error & WIFI_ERRBIT)
       {
         startWIFI();
@@ -110,11 +147,36 @@ void loop()
     }
   #endif
 
+  #ifdef USE_NTP_SERVER
+    if (ntpT.TOut() == true)
+    {
+      if (ntpGet == true)
+      {
+        ntpGet = md_getTime(&ntpTime);
+        setTime(ntpTime);
+      }
+      else
+      {
+        setTime(++ntpTime);
+      }
+      ntpT.startT();
+            #if (DEBUG_MODE == CFG_DEBUG_DETAILS)
+              Serial.print("Datum "); Serial.print(day()); Serial.print("."); Serial.print(month()); Serial.print("."); Serial.print(year()); Serial.print(" ");
+              Serial.print("Zeit "); Serial.print(hour()); Serial.print("."); Serial.print(minute()); Serial.print(":"); Serial.println(second());
+            #endif
+      #ifdef USE_TOUCHSCREEN
+      sprintf(outBuf,"%02d.%02d.%02d %02d:%02d:%02d", day(), month(), year()-2000, hour(), minute(), second());
+      md_wrTouch(outBuf, 0, DATE_DISP_LINE);
+      #endif
+    }
+
+  #endif // USE_NTP_SERVER
+
   // run webserver - restart on error
   #ifdef USE_WEBSERVER
-    if (curTime - serverTime >= WEBSERVER_CYCLE)
+    if (servT.TOut())
     {
-      dispTime = serverTime;
+      servT.startT();
       if (md_error & SERVER_ERRBIT)
       {
         startWebServer();
@@ -130,17 +192,18 @@ void loop()
   // handle touch input / output
   #ifdef USE_TOUCHSCREEN
     md_runTouch(outBuf);
-    if (curTime - dispTime >= DISP_CYCLE)
+    if (dispT.TOut())
     {
-      dispTime = curTime;
-      md_wrTouch("Zeile ", ze, ze);
-      ze++;
-      sprintf(outBuf,"Hallo Zeile %d",ze);
-      md_wrStatus(outBuf, 0);
-      if (ze > 10) { ze = 1; }
+      dispT.startT();
+//      sprintf(outBuf,"Ze %d Sp%d", ze, ze-1);
+//      md_wrTouch(outBuf, ze-1, ze);
+//      if (++ze > 9) { ze = 1; }
     }
   #endif // USE_DISPLAY
 
+  #ifdef USE_TOUCHSCREEN
+    md_wrStatus();
+  #endif
 }
 
 /*

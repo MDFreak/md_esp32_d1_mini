@@ -24,3 +24,33 @@ uint16_t setBit(const uint16_t inWert, const uint16_t inBit, const bool inVal)
 */
   return ret;
 }
+
+msTimer::msTimer()
+{
+  startT(0);
+}
+
+msTimer::msTimer(const unsigned long inTOut)
+{
+  startT(inTOut);
+}
+
+
+bool msTimer::TOut()
+{
+  if ((millis() - _tstart) > _tout)
+    return true;
+  else
+    return false;
+}
+
+void msTimer::startT()
+{
+  _tstart = millis();
+}
+
+void msTimer::startT(const unsigned long inTOut)
+{
+  _tstart = millis();
+  _tout   = inTOut;
+}
