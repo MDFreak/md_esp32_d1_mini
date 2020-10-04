@@ -8,30 +8,12 @@
     #include "FS.h"
     #include <SPI.h>
     #include <TFT_eSPI.h>      // Hardware-specific library
-    #include "config.h"
+
 
     #if (USE_PROJECT == 1)
-      #define KEY_X 40 // Centre of key
-      #define KEY_Y 96
-      #define KEY_W 62 // Width and height
-      #define KEY_H 30
-      // Keypad start position, key sizes and spacing
-
-      // We have a status line for messages
-      #define STATUS_XCENT 120 // Centred on this
-      #define STATUS_YCENT 315
-      #define STATUS_XLI     0
-      #define STATUS_XRE   239
-      #define STATUS_YOB   300
-      #define STATUS_YUN   319
-      #define STATUS_FCOL  TFT_MAGENTA
-      #define STATUS_BCOL  TFT_BLACK
-      #define DISP_BCOL    TFT_NAVY
-      #define DISP_ANZ_SP   20
-      #define DISP_ANZ_ZE   12
-      #define DISP_Hoe_ZE   25
-      #define DISP_TX_FCOL TFT_GREENYELLOW
-      #define DISP_TX_BCOL DISP_BCOL
+      // Using two fonts since numbers are nice when bold
+      #define NORM_FONT &FreeSansOblique12pt7b // Key label font 1
+      #define BOLD_FONT &FreeSansBold12pt7b    // Key label font 2
     #else
       // Keypad start position, key sizes and spacing
       #define KEY_X 40 // Centre of key
@@ -52,7 +34,7 @@
       #define DISP_W 238
       #define DISP_H 50
       #define DISP_TSIZE 3
-      #define DISP_TCOLOR TFT_CYAN
+      #define DISP_TCOLOR 0x07FF // TFT_CYAN
 
       // We have a status line for messages
       #define STATUS_X 120 // Centred on this
@@ -61,13 +43,29 @@
       // Number length, buffer for storing it and character index
       #define NUM_LEN 12
     #endif
+    class md_touch
+    {
+      private:
+        msTimer clrT     = msTimer();
+        msTimer minT     = msTimer(STAT_TIMEMIN);
+        bool    isStatus = false; // status text visible
+        char    outTxt[STAT_LINELEN + 1] = "";
 
-    bool md_startTouch();
-    bool md_calTouch();
-    bool md_runTouch(char* pStatus);
-    bool md_wrTouch(const char *msg, uint8_t spalte, uint8_t zeile);
-    bool md_wrStatus();
-    bool md_wrStatus(const char* msg);
-    bool md_wrStatus(const char* msg, uint32_t stayTime);
+      public:
+        bool startTouch();
+        bool calTouch();
+        bool runTouch(char* pStatus);
+        bool wrTouch(const char *msg, uint8_t spalte, uint8_t zeile);
+        bool wrStatus();
+        bool wrStatus(const char* msg);
+        bool wrStatus(const char* msg, uint32_t stayTime);
+
+      private:
+        bool drawScreen();
+        bool drawKeypad();
+        bool drawStatus(char* outStat);
+        bool clearTFT();
+        bool initTFT(const uint8_t csTFT);
+    };
   #endif
 #endif

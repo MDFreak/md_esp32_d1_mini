@@ -17,6 +17,9 @@ tmElements_t actTime;
 #endif
 
 #ifdef USE_WEBSERVER
+#ifdef CLASS_SERVER
+  md_server web = md_server();
+#endif
   msTimer servT = msTimer(WEBSERVER_CYCLE);
 #endif // USE_WEBSERVER
 
@@ -27,7 +30,7 @@ tmElements_t actTime;
 #endif // USE_WEBSERVER
 
 // ------ User-Interface
-
+md_touch      touch      = md_touch();
 msTimer       dispT      = msTimer(DISP_CYCLE);
 uint32_t      ze         = 1;      // aktuelle Schreibzeile
 char          outBuf[2*STAT_LINELEN] = "";
@@ -37,7 +40,11 @@ char          outBuf[2*STAT_LINELEN] = "";
 #ifdef USE_WIFI
   void startWIFI()
   {
+#ifndef CLASS_SERVER
     bool ret = md_startWIFI();
+#else
+    bool ret = web.md_startWIFI();
+#endif
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
             Serial.print("startWIFI ret="); Serial.print(ret);
           #endif
@@ -51,7 +58,11 @@ char          outBuf[2*STAT_LINELEN] = "";
 #ifdef USE_WEBSERVER
   void startWebServer()
   {
+#ifndef CLASS_SERVER
     bool ret = md_startServer();
+#else
+    bool ret = web.md_startServer();
+#endif
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
 //              Serial.print("startServer ret="); Serial.print(ret);
           #endif
@@ -65,7 +76,7 @@ char          outBuf[2*STAT_LINELEN] = "";
 #ifdef USE_TOUCHSCREEN
   void startTouch()
   {
-    bool ret = md_startTouch();
+    bool ret = touch.startTouch();
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
             Serial.print("startWIFI ret="); Serial.print(ret);
           #endif
@@ -79,28 +90,32 @@ char          outBuf[2*STAT_LINELEN] = "";
 
 void setup()
 {
-  #ifdef USE_TOUCHSCREEN
-    startTouch();
-  #endif // USE_TOUCHSCREEN
-
-  Serial.begin(SER_BAUDRATE);
+  #if (USE_PROJECT >= CFG_PROJ_DEFTEST) // system -> always
         #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
           Serial.println(); Serial.println("setup start ...");
         #endif
-        #ifdef USE_TOUCHSCREEN
-          while (md_wrStatus("setup start ..."));
-        #endif
+  #endif // system -> always
+
+  #ifdef USE_TOUCHSCREEN
+    touch.startTouch();
+    touch.wrTouch(PROJ_TITLE, 0, 1);
+  #endif // USE_TOUCHSCREEN
+
+  Serial.begin(SER_BAUDRATE);
+  #ifdef USE_TOUCHSCREEN
+    while (touch.wrStatus("setup start ..."));
+  #endif // USE_TOUCHSCREEN
 
   #ifdef USE_WIFI
     startWIFI();
           #ifdef USE_TOUCHSCREEN
             if ((md_error & WIFI_ERRBIT) == 0)
             {
-              while (md_wrStatus("WIFI connected"));
+              while (touch.wrStatus("WIFI connected"));
             }
             else
             {
-              while (md_wrStatus("WIFI error"));
+              while (touch.wrStatus("WIFI error"));
             }
           #endif
 
@@ -109,35 +124,40 @@ void setup()
             #ifdef USE_TOUCHSCREEN
               if ((md_error & SERVER_ERRBIT) == 0)
               {
-                while (md_wrStatus("WIFI & Server ok"));
+                while (touch.wrStatus("WIFI & Server ok"));
               }
               else
               {
-                while (md_wrStatus("Server error"));
+                while (touch.wrStatus("Server error"));
               }
             #endif
     #endif
 
     #ifdef USE_NTP_SERVER
+#ifndef CLASS_SERVER
       md_initNTPTime();
+#else
+      web.md_initNTPTime();
+#endif
     #endif
 
-  #endif
+  #endif // USE_WIFI
 
-  #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
-    Serial.println();
-    Serial.print("... end setup -- error="); Serial.println(md_error);
-    Serial.println();
-  #endif
+  #if (USE_PROJECT >= CFG_PROJ_DEFTEST) // system -> always
+        #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+          Serial.println();
+          Serial.print("... end setup -- error="); Serial.println(md_error);
+          Serial.println();
+        #endif
+  #endif // system -> always
 }
 
 // --------------------------------
 
 void loop()
 {
-  // restart WIFI if offline
   #ifdef USE_WIFI
-    if(wifiT.TOut())
+    if(wifiT.TOut()) // restart WIFI if offline
     {
       wifiT.startT();
       if(md_error & WIFI_ERRBIT)
@@ -145,14 +165,18 @@ void loop()
         startWIFI();
       }
     }
-  #endif
+  #endif // USE_WIFI
 
   #ifdef USE_NTP_SERVER
     if (ntpT.TOut() == true)
     {
       if (ntpGet == true)
       {
+#ifndef CLASS_SERVER
         ntpGet = md_getTime(&ntpTime);
+#else
+        ntpGet = web.md_getTime(&ntpTime);
+#endif
         setTime(ntpTime);
       }
       else
@@ -165,16 +189,14 @@ void loop()
               Serial.print("Zeit "); Serial.print(hour()); Serial.print("."); Serial.print(minute()); Serial.print(":"); Serial.println(second());
             #endif
       #ifdef USE_TOUCHSCREEN
-      sprintf(outBuf,"%02d.%02d.%02d %02d:%02d:%02d", day(), month(), year()-2000, hour(), minute(), second());
-      md_wrTouch(outBuf, 0, DATE_DISP_LINE);
+        sprintf(outBuf,"  %02d.%02d %02d:%02d:%02d", day(), month(), hour(), minute(), second());
+        touch.wrTouch(outBuf, 0, DATE_DISP_LINE);
       #endif
     }
-
   #endif // USE_NTP_SERVER
 
-  // run webserver - restart on error
   #ifdef USE_WEBSERVER
-    if (servT.TOut())
+    if (servT.TOut()) // run webserver - restart on error
     {
       servT.startT();
       if (md_error & SERVER_ERRBIT)
@@ -183,30 +205,36 @@ void loop()
       }
       else
       {
+#ifndef CLASS_SERVER
         bool ret = md_handleClient();
+#else
+        bool ret = web.md_handleClient();
+#endif
         md_error = setBit(md_error, SERVER_ERRBIT, ret);
       }
     }
   #endif
 
-  // handle touch input / output
   #ifdef USE_TOUCHSCREEN
-    md_runTouch(outBuf);
-    if (dispT.TOut())
+    touch.runTouch(outBuf);
+    if (dispT.TOut())    // handle touch output
     {
       dispT.startT();
 //      sprintf(outBuf,"Ze %d Sp%d", ze, ze-1);
 //      md_wrTouch(outBuf, ze-1, ze);
 //      if (++ze > 9) { ze = 1; }
+//      md_wrTouch("Zeile 9", 1, 8);
+//      md_wrStatus("Status schreiben");
+      touch.wrStatus();  // trigger status for deleting
     }
   #endif // USE_DISPLAY
 
   #ifdef USE_TOUCHSCREEN
-    md_wrStatus();
-  #endif
+    //touch.wrStatus();  // trigger status for deleting
+  #endif // USE_TOUCHSCREEN
 }
 
-/*
+/*   Reserve Vorlage fuer Webserver
 #ifdef DUMMY
 #ifdef USE_WEBSERVER
   void drawGraph()

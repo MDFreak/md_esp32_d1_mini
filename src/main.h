@@ -6,15 +6,13 @@
   #include <TimeLib.h>
   #include "config.h"
   #include "md_util.h"
-  #include "config.h"
-  #include "md_util.h"
-
-  #ifdef USE_WIFI
-    #include "md_webserver.h"
-  #endif
 
   #ifdef USE_TOUCHSCREEN
     #include "md_touch.h"
   #endif // USE_TOUCHSCREEN
+
+  #ifdef USE_WIFI
+    #include "md_webserver.h"
+  #endif
 
 #endif // MAIN_H
