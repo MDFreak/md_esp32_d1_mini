@@ -1,9 +1,23 @@
 #include "main.h"
 
 // ------ system ------------------------
+#ifdef USE_SONTTASK
+TaskHandle_t songTask;
 
-uint16_t     md_error  = 0;        // Error-Status bitkodiert -> 0: alles ok
-tmElements_t actTime;
+uint16_t     md_error  = 0    // Error-Status bitkodiert -> 0: alles ok
+                         #ifdef USE_WIFI
+                           + ERRBIT_WIFI
+                           #ifdef USE_NTP_SERVER
+                             + ERRBIT_NTPTIME
+                           #endif
+                         #endif
+                         #ifdef USE_WEBSERVER
+                           + ERRBIT_SERVER
+                         #endif
+                         #ifdef USE_TOUCHSCREEN
+                           + ERRBIT_TOUCH
+                         #endif
+                         ;
 //struct tm* ptm       = &timeinfo;
 
 #ifdef BOARD_LED
@@ -17,9 +31,6 @@ tmElements_t actTime;
 #endif
 
 #ifdef USE_WEBSERVER
-#ifdef CLASS_SERVER
-  md_server web = md_server();
-#endif
   msTimer servT = msTimer(WEBSERVER_CYCLE);
 #endif // USE_WEBSERVER
 
@@ -37,39 +48,86 @@ char          outBuf[2*STAT_LINELEN] = "";
 
 // --- private functions -----------------
 
-#ifdef USE_WIFI
-  void startWIFI()
+#ifdef USE_NTP_SERVER
+  void initNTPTime()
   {
-#ifndef CLASS_SERVER
-    bool ret = md_startWIFI();
-#else
-    bool ret = web.md_startWIFI();
-#endif
+    bool ret = wifiMD.md_initNTPTime();
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-            Serial.print("startWIFI ret="); Serial.print(ret);
+            Serial.print("initNTPTime ret="); Serial.print(ret);
           #endif
-    md_error = setBit(md_error, WIFI_ERRBIT, ret);
+    md_error = setBit(md_error, ERRBIT_NTPTIME, ret);
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
             Serial.print("  md_error="); Serial.println(md_error);
           #endif
+    #ifdef USE_TOUCHSCREEN
+      if ((md_error & ERRBIT_WIFI) == 0)
+      {
+        while (touch.wrStatus("NTPTime ok"));
+      }
+      else
+      {
+        while (touch.wrStatus("NTPTime error"));
+      }
+    #endif
+
   }
 #endif // USE_WIFI
+
+#ifdef USE_WIFI
+  void startWIFI()
+  {
+    wifiMD.setLocIP();
+    bool ret = wifiMD.md_startWIFI();
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+            Serial.print("startWIFI ret="); Serial.print(ret);
+          #endif
+    md_error = setBit(md_error, ERRBIT_WIFI, ret);
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+            Serial.print("  md_error="); Serial.println(md_error);
+          #endif
+    #ifdef USE_TOUCHSCREEN
+      if ((md_error & ERRBIT_WIFI) == 0)
+      {
+        while (touch.wrStatus("WIFI connected"));
+      }
+      else
+      {
+        while (touch.wrStatus("WIFI error"));
+      }
+    #endif
+    #ifdef USE_NTP_SERVER
+      if((md_error & ERRBIT_WIFI) == 0) // WiFi ok
+      {
+        if((md_error & ERRBIT_NTPTIME) != 0) // WiFi ok
+        {
+          initNTPTime();
+        }
+      }
+    #endif
+  }
+#endif
 
 #ifdef USE_WEBSERVER
   void startWebServer()
   {
-#ifndef CLASS_SERVER
-    bool ret = md_startServer();
-#else
-    bool ret = web.md_startServer();
-#endif
+    bool ret = webMD.md_startServer();
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
 //              Serial.print("startServer ret="); Serial.print(ret);
           #endif
-    md_error = setBit(md_error, SERVER_ERRBIT, ret);
+    md_error = setBit(md_error, ERRBIT_SERVER, ret);
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
 //            Serial.print("  md_error="); Serial.println(md_error);
           #endif
+    #ifdef USE_TOUCHSCREEN
+      if ((md_error & ERRBIT_SERVER) == 0)
+      {
+        while (touch.wrStatus("Webserver online"));
+      }
+      else
+      {
+        while (touch.wrStatus("Webserver error"));
+      }
+    #endif
   }
 #endif // USE_WEBSERVER
 
@@ -80,7 +138,7 @@ char          outBuf[2*STAT_LINELEN] = "";
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
             Serial.print("startWIFI ret="); Serial.print(ret);
           #endif
-    md_error = setBit(md_error, TOUCH_ERRBIT, ret);
+    md_error = setBit(md_error, ERRBIT_TOUCH, ret);
           #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
             Serial.print("  md_error="); Serial.println(md_error);
           #endif
@@ -97,8 +155,11 @@ void setup()
   #endif // system -> always
 
   #ifdef USE_TOUCHSCREEN
-    touch.startTouch();
-    touch.wrTouch(PROJ_TITLE, 0, 1);
+    startTouch();
+    if ((md_error & ERRBIT_TOUCH) == 0 )
+    {
+      touch.wrTouch(PROJ_TITLE, 0, 1);
+    }
   #endif // USE_TOUCHSCREEN
 
   Serial.begin(SER_BAUDRATE);
@@ -109,7 +170,7 @@ void setup()
   #ifdef USE_WIFI
     startWIFI();
           #ifdef USE_TOUCHSCREEN
-            if ((md_error & WIFI_ERRBIT) == 0)
+            if ((md_error & ERRBIT_WIFI) == 0)
             {
               while (touch.wrStatus("WIFI connected"));
             }
@@ -118,30 +179,11 @@ void setup()
               while (touch.wrStatus("WIFI error"));
             }
           #endif
-
-    #ifdef USE_WEBSERVER
-      startWebServer();
-            #ifdef USE_TOUCHSCREEN
-              if ((md_error & SERVER_ERRBIT) == 0)
-              {
-                while (touch.wrStatus("WIFI & Server ok"));
-              }
-              else
-              {
-                while (touch.wrStatus("Server error"));
-              }
-            #endif
-    #endif
-
-    #ifdef USE_NTP_SERVER
-#ifndef CLASS_SERVER
-      md_initNTPTime();
-#else
-      web.md_initNTPTime();
-#endif
-    #endif
-
   #endif // USE_WIFI
+
+  #ifdef USE_BUZZER
+
+  #endif
 
   #if (USE_PROJECT >= CFG_PROJ_DEFTEST) // system -> always
         #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
@@ -150,18 +192,23 @@ void setup()
           Serial.println();
         #endif
   #endif // system -> always
+
 }
 
 // --------------------------------
 
 void loop()
 {
-  #ifdef USE_WIFI
-    if(wifiT.TOut()) // restart WIFI if offline
+  uint16_t t_x = 0, t_y = 0; // To store the touch coordinates
+
+  #ifdef USE_WIFI  // restart WIFI if offline
+    if(wifiT.TOut())
     {
+      //Serial.print("WiFi md_error = "); Serial.println(md_error);
       wifiT.startT();
-      if(md_error & WIFI_ERRBIT)
+      if((md_error & ERRBIT_WIFI) > 0)
       {
+        Serial.println("WiFi startWIFI");
         startWIFI();
       }
     }
@@ -170,16 +217,33 @@ void loop()
   #ifdef USE_NTP_SERVER
     if (ntpT.TOut() == true)
     {
-      if (ntpGet == true)
-      {
-#ifndef CLASS_SERVER
-        ntpGet = md_getTime(&ntpTime);
-#else
-        ntpGet = web.md_getTime(&ntpTime);
-#endif
-        setTime(ntpTime);
+      if ((md_error & ERRBIT_WIFI) == 0)
+      { // WiFi online
+        if (((md_error & ERRBIT_NTPTIME) > 0) || (year() < 2000))   // time not initialized
+        {
+          initNTPTime();
+          ntpGet = true;
+        }
+        if ((md_error & ERRBIT_NTPTIME) == 0) // time initialized
+        {
+          if (ntpGet == true)
+          {
+            ntpGet = wifiMD.md_getTime(&ntpTime);
+            setTime(ntpTime);
+          }
+          else
+          {
+            setTime(++ntpTime);
+
+          }
+
+        }
+        else // NTPTIME ok
+        {
+          setTime(++ntpTime);
+        }
       }
-      else
+      else // Wifi error
       {
         setTime(++ntpTime);
       }
@@ -199,18 +263,14 @@ void loop()
     if (servT.TOut()) // run webserver - restart on error
     {
       servT.startT();
-      if (md_error & SERVER_ERRBIT)
+      if (md_error & ERRBIT_SERVER)
       {
         startWebServer();
       }
       else
       {
-#ifndef CLASS_SERVER
-        bool ret = md_handleClient();
-#else
-        bool ret = web.md_handleClient();
-#endif
-        md_error = setBit(md_error, SERVER_ERRBIT, ret);
+        bool ret = webMD.md_handleClient();
+        md_error = setBit(md_error, ERRBIT_SERVER, ret);
       }
     }
   #endif
@@ -220,23 +280,13 @@ void loop()
     if (dispT.TOut())    // handle touch output
     {
       dispT.startT();
-//      sprintf(outBuf,"Ze %d Sp%d", ze, ze-1);
-//      md_wrTouch(outBuf, ze-1, ze);
-//      if (++ze > 9) { ze = 1; }
-//      md_wrTouch("Zeile 9", 1, 8);
-//      md_wrStatus("Status schreiben");
       touch.wrStatus();  // trigger status for deleting
     }
-  #endif // USE_DISPLAY
-
-  #ifdef USE_TOUCHSCREEN
-    //touch.wrStatus();  // trigger status for deleting
   #endif // USE_TOUCHSCREEN
 }
 
-/*   Reserve Vorlage fuer Webserver
-#ifdef DUMMY
 #ifdef USE_WEBSERVER
+  #ifdef DUMMY
   void drawGraph()
   {
     String out = "";
@@ -308,10 +358,11 @@ void loop()
     server.send(404, "text/plain", message);
     digitalWrite(led, 0);
   }
+  #endif
 #endif // USE_WEBSERVER
-#endif
 
-#ifdef DUMMY
+#ifdef USE_TOUCHSCREEN
+  #ifdef DUMMY
 
   #include "FS.h"
 
@@ -478,107 +529,8 @@ void loop()
     }
   }
 
-  //------------------------------------------------------------------------------------------
 
-  void drawKeypad()
-  {
-    // Draw the keys
-    for (uint8_t row = 0; row < 5; row++) {
-      for (uint8_t col = 0; col < 3; col++) {
-        uint8_t b = col + row * 3;
-
-        if (b < 3) tft.setFreeFont(LABEL1_FONT);
-        else tft.setFreeFont(LABEL2_FONT);
-
-        key[b].initButton(&tft, KEY_X + col * (KEY_W + KEY_SPACING_X),
-                          KEY_Y + row * (KEY_H + KEY_SPACING_Y), // x, y, w, h, outline, fill, text
-                          KEY_W, KEY_H, TFT_WHITE, keyColor[b], TFT_WHITE,
-                          keyLabel[b], KEY_TEXTSIZE);
-        key[b].drawButton();
-      }
-    }
-  }
-
-  //------------------------------------------------------------------------------------------
-
-  void touch_calibrate()
-  {
-    uint16_t calData[5];
-    uint8_t calDataOK = 0;
-
-    // check file system exists
-    if (!SPIFFS.begin()) {
-      Serial.println("Formating file system");
-      SPIFFS.format();
-      SPIFFS.begin();
-    }
-
-    // check if calibration file exists and size is correct
-    if (SPIFFS.exists(CALIBRATION_FILE)) {
-      if (REPEAT_CAL)
-      {
-        // Delete if we want to re-calibrate
-        SPIFFS.remove(CALIBRATION_FILE);
-      }
-      else
-      {
-        File f = SPIFFS.open(CALIBRATION_FILE, "r");
-        if (f) {
-          if (f.readBytes((char *)calData, 14) == 14)
-            calDataOK = 1;
-          f.close();
-        }
-      }
-    }
-
-    if (calDataOK && !REPEAT_CAL) {
-      // calibration data valid
-      tft.setTouch(calData);
-    } else {
-      // data not valid so recalibrate
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(20, 0);
-      tft.setTextFont(2);
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
-      tft.println("Touch corners as indicated");
-
-      tft.setTextFont(1);
-      tft.println();
-
-      if (REPEAT_CAL) {
-        tft.setTextColor(TFT_RED, TFT_BLACK);
-        tft.println("Set REPEAT_CAL to false to stop this running again!");
-      }
-
-      tft.calibrateTouch(calData, TFT_MAGENTA, TFT_BLACK, 15);
-
-      tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      tft.println("Calibration complete!");
-
-      // store data
-      File f = SPIFFS.open(CALIBRATION_FILE, "w");
-      if (f) {
-        f.write((const unsigned char *)calData, 14);
-        f.close();
-      }
-    }
-  }
-
-  //------------------------------------------------------------------------------------------
-
-  // Print something in the mini status bar
-  void status(const char *msg) {
-    tft.setTextPadding(240);
-    //tft.setCursor(STATUS_X, STATUS_Y);
-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
-    tft.setTextFont(0);
-    tft.setTextDatum(TC_DATUM);
-    tft.setTextSize(1);
-    tft.drawString(msg, STATUS_X, STATUS_Y);
-  }
-
+  #endif
   //------------------------------------------------------------------------------------------
 
 
@@ -588,4 +540,3 @@ void loop()
 #ifdef DUMMY
 
 #endif
-*/

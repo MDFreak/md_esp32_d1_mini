@@ -3,14 +3,14 @@
 const char* ssidMAMD = WIFI_MAMD_SSID;
 const char* ssidHM   = WIFI_HM_SSID;
 const char* nossid   = NULL;
-const char *password = WIFI_PW;
+const char* password = WIFI_PW;
 
 // Set Static IP address and Gateway
 #ifdef WIFI_LOCAL_IP
   //IPAddress local_IP(192, 168, 1, 184);
-  IPAddress local_IP(10,0,0,20);
-  IPAddress gateway(10,0,0,139);
-  IPAddress subnet(255,255,0,0);
+  IPAddress locIP (WIFI_LOCIP3, WIFI_LOCIP2, WIFI_LOCIP1, WIFI_FIXIP);
+  IPAddress gateIP(WIFI_LOCIP3, WIFI_LOCIP2, WIFI_LOCIP1, WIFI_GATEWAY);
+  IPAddress subNET(WIFI_SUBNET3,WIFI_SUBNET2,WIFI_SUBNET1,WIFI_SUBNET0);
 #endif
 
 #ifdef USE_NTP_SERVER
@@ -21,13 +21,120 @@ const char *password = WIFI_PW;
   WiFiUDP      udp;
 #endif
 
-//WiFiServer   server(80);
-WebServer    server(80);
-#ifndef CLASS_SERVER
-  char*        ssid = (char*) nossid;
-  String       header;          // store HTTP-request
-#endif
-// ------ callback functions --------------------------
+md_wifi   wifiMD  = md_wifi();
+WebServer webServ(80);
+md_server webMD   = md_server();
+
+// ------ callback WIFI --------------------------
+
+void WiFiEvent(WiFiEvent_t event)
+{
+    #if (DEBUG_MODE > CFG_DEBUG_NONE)
+      Serial.printf("     [WiFi-event] event: %d\n", event);
+    #endif
+    switch (event)
+    {
+      case SYSTEM_EVENT_WIFI_READY:
+          Serial.println("WiFi interface ready");
+          break;
+      case SYSTEM_EVENT_SCAN_DONE:
+          //Serial.println("Completed scan for access points");
+          break;
+      case SYSTEM_EVENT_STA_START:
+          Serial.println("WiFi client started");
+//          wifiMD.setSSID(ON);
+          break;
+      case SYSTEM_EVENT_STA_STOP:
+          Serial.println("WiFi clients stopped");
+//          wifiMD.setSSID(OFF);
+          break;
+      case SYSTEM_EVENT_STA_CONNECTED:
+          Serial.println("Connected to access point");
+//          wifiMD.setSSID(ON);
+          break;
+      case SYSTEM_EVENT_STA_DISCONNECTED:
+          //Serial.print("Disconnected from WiFi status = "); Serial.println(WiFi.status());
+//          wifiMD.setSSID(OFF);
+          break;
+      case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
+          Serial.println("Authentication mode of access point has changed");
+          break;
+      case SYSTEM_EVENT_STA_GOT_IP:
+          //Serial.print("Obtained IP address: "); Serial.println(WiFi.localIP());
+//          wifiMD.setSSID(ON);
+          break;
+      case SYSTEM_EVENT_STA_LOST_IP:
+          Serial.println("Lost IP address and IP address is reset to 0");
+//          wifiMD.setSSID(OFF);
+          break;
+      case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
+          Serial.println("WiFi Protected Setup (WPS): succeeded in enrollee mode");
+          break;
+      case SYSTEM_EVENT_STA_WPS_ER_FAILED:
+          Serial.println("WiFi Protected Setup (WPS): failed in enrollee mode");
+          break;
+      case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
+          Serial.println("WiFi Protected Setup (WPS): timeout in enrollee mode");
+          break;
+      case SYSTEM_EVENT_STA_WPS_ER_PIN:
+          Serial.println("WiFi Protected Setup (WPS): pin code in enrollee mode");
+          break;
+              #ifdef USE_WIFI_AP
+                // access point events
+                case SYSTEM_EVENT_AP_START:
+                    Serial.println("WiFi access point started");
+                    break;
+                case SYSTEM_EVENT_AP_STOP:
+                    Serial.println("WiFi access point  stopped");
+                    break;
+                case SYSTEM_EVENT_AP_STACONNECTED:
+                    Serial.println("Client connected");
+                    break;
+                case SYSTEM_EVENT_AP_STADISCONNECTED:
+                    Serial.println("Client disconnected");
+                    break;
+                case SYSTEM_EVENT_AP_STAIPASSIGNED:
+                    Serial.println("Assigned IP address to client");
+                    break;
+                case SYSTEM_EVENT_AP_PROBEREQRECVED:
+                    Serial.println("Received probe request");
+                    break;
+                case SYSTEM_EVENT_GOT_IP6:
+                    Serial.println("IPv6 is preferred");
+                    break;
+              #endif
+              #ifdef USE_WIFI_ETHERNET
+                    // ethernet events
+                case SYSTEM_EVENT_ETH_START:
+                    Serial.println("Ethernet started");
+                    break;
+                case SYSTEM_EVENT_ETH_STOP:
+                    Serial.println("Ethernet stopped");
+                    break;
+                case SYSTEM_EVENT_ETH_CONNECTED:
+                    Serial.println("Ethernet connected");
+                    break;
+                case SYSTEM_EVENT_ETH_DISCONNECTED:
+                    Serial.println("Ethernet disconnected");
+                    break;
+                case SYSTEM_EVENT_ETH_GOT_IP:
+                    Serial.println("Obtained IP address");
+                    break;
+              #endif
+      default:
+          break;
+    }
+  }
+
+  #ifdef Dummy
+    void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
+  {
+    Serial.print("WiFi connected - ");
+    Serial.print("IP: ");
+    Serial.println(IPAddress(info.got_ip.ip_info.ip.addr));
+  }
+  #endif
+// ------ callback webserver --------------------------
 
 void drawGraph()
 {
@@ -46,443 +153,259 @@ void drawGraph()
   }
   out += "</g>\n</svg>\n";
 
-  server.send(200, "image/svg+xml", out);
+  webServ.send(200, "image/svg+xml", out);
 }
 
 void handleRoot()
-  {
-    #ifdef BOARD_LED
-      digitalWrite(BOARD_LED, 1);
-    #endif
-    char temp[400];
-    int sec = millis() / 1000;
-    int min = sec / 60;
-    int hr = min / 60;
+{
+  #ifdef BOARD_LED
+    digitalWrite(BOARD_LED, 1);
+  #endif
+  char temp[400];
+  int sec = millis() / 1000;
+  int min = sec / 60;
+  int hr = min / 60;
 
-    snprintf(temp, 400,
+  snprintf(temp, 400,
 
-      "<html>\
-        <head>\
-          <meta http-equiv='refresh' content='5'/>\
-          <title>ESP32 Gruss an Mathi</title>\
-          <style>\
-            body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
-          </style>\
-        </head>\
-        <body>\
-          <h1>Hallo Mathi vom ESP32!</h1>\
-          <p>Uptime: %02d:%02d:%02d</p>\
-          <img src=\"/test.svg\" />\
-        </body>\
-      </html>",
+    "<html>\
+      <head>\
+        <meta http-equiv='refresh' content='5'/>\
+        <title>ESP32 Gruss an Mathi</title>\
+        <style>\
+          body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
+        </style>\
+      </head>\
+      <body>\
+        <h1>Hallo Mathi vom ESP32!</h1>\
+        <p>Uptime: %02d:%02d:%02d</p>\
+        <img src=\"/test.svg\" />\
+      </body>\
+    </html>",
 
-               hr, min % 60, sec % 60
-              );
-    server.send(200, "text/html", temp);
-    #ifdef BOARD_LED
-      digitalWrite(BOARD_LED, 0);
-    #endif
-  }
+             hr, min % 60, sec % 60
+            );
+  webServ.send(200, "text/html", temp);
+  #ifdef BOARD_LED
+    digitalWrite(BOARD_LED, 0);
+  #endif
+}
 
 void handleNotFound()
-  {
-    #ifdef BOARD_LED
-      digitalWrite(BOARD_LED, 1);
-    #endif
-    String message = "File Not Found\n\n";
-    message += "URI: ";
-    message += server.uri();
-    message += "\nMethod: ";
-    message += (server.method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: ";
-    message += server.args();
-    message += "\n";
-
-    for (uint8_t i = 0; i < server.args(); i++)
-    {
-      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
-
-    server.send(404, "text/plain", message);
-    Serial.println(message);
-    #ifdef BOARD_LED
-      digitalWrite(BOARD_LED, 0);
-    #endif
-  }
-
-#ifndef CLASS_SERVER
-
-// ------ private functions --------------------------
-#ifdef USE_NTP_SERVER
-  unsigned long sendNTPpacket(IPAddress& address);
-#endif
-
-// ------ Setup-Funktionen --------------------------
-bool md_scanWIFI()
 {
-  bool ret = false;
-  // Set WiFi to station mode and disconnect from an AP if it was previously connected
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
-
-  Serial.println(); Serial.println("WIFI scan start");
-
-  // WiFi.scanNetworks will return the number of networks found
-  int n = WiFi.scanNetworks();
-  Serial.println("scan done");
-  if (n == 0)
-  {
-    Serial.println("no networks found");
-    ret = true;
-    //return true;
-  }
-  else
-  {
-    bool found = false;
-    Serial.print(n);
-    Serial.println(" networks found");
-    for (int i = 0; i < n; ++i)
-    {
-      // Print SSID and RSSI for each network found
-      Serial.print(i + 1);
-      if (WiFi.SSID(i) == ssidHM)
-      {
-        ssid = (char*) ssidHM;
-        found = true;
-        Serial.print(" used: "); Serial.print(ssid); Serial.print(" - ");
-      }
-      else if (WiFi.SSID(i) == ssidMAMD)
-      {
-        ssid = (char*) ssidMAMD;
-        found = true;
-        Serial.print(" used: "); Serial.print(ssid); Serial.print(" - ");
-      }
-      Serial.print(WiFi.SSID(i));
-      Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
-      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-      delay(10);
-      if (found == true)
-      {
-        break;
-      }
-    }
-  }
-  Serial.println("");
-
-  return ret;
-}
-
-bool md_startWIFI()
-{
-  bool ret = false;
-// Configures static IP address
-  WiFi.mode(WIFI_STA);
-
-  WiFi.disconnect();
-  delay(100);
-
-  #ifdef WIFI_LOCAL_IP
-//    if ( WiFi.config(local_IP, gateway, subnet /*, primaryDNS, secondaryDNS*/))
-    if ( WiFi.config(local_IP, gateway, subnet /*, primaryDNS, secondaryDNS*/) == false)
-    {
-      Serial.println("STA Failed to configure");
-      //ret = true;
-      return false;
-    }
+  #ifdef BOARD_LED
+    digitalWrite(BOARD_LED, 1);
   #endif
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += webServ.uri();
+  message += "\nMethod: ";
+  message += (webServ.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += webServ.args();
+  message += "\n";
 
-  ret = md_scanWIFI();
-  WiFi.begin(ssid, password);
-  Serial.println("");
-
-  // Wait for connection
-  uint8_t timeout = (uint8_t) WIFI_CONN_REP;
-  while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
+  for (uint8_t i = 0; i < webServ.args(); i++)
   {
-    delay(WIFI_CONN_DELAY);
-    Serial.print(".");
-    timeout--;
+    message += " " + webServ.argName(i) + ": " + webServ.arg(i) + "\n";
   }
 
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(ssid);
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
-    if (MDNS.begin("esp32"))
-    {
-      Serial.println("MDNS responder started");
-    }
-    #ifdef USE_NTP_SERVER
-      md_initNTPTime();
-    #endif
-  }
-  else
-  {
-    Serial.println("Connection failed -> timout");
-    ret = true;
-  }
-  return ret;
+  webServ.send(404, "text/plain", message);
+  Serial.println(message);
+  #ifdef BOARD_LED
+    digitalWrite(BOARD_LED, 0);
+  #endif
 }
 
-bool md_startServer()
+// ------ class md_wifi --------------------------
+
+void md_wifi::setLocIP()
 {
-//  if (WiFi.status() != WL_CONNECTED)
-//  {
-    server.on("/", handleRoot);
-    server.on("/test.svg", drawGraph);
-    server.on("/inline", []() {
-      server.send(200, "text/plain", "this works as well");
-      });
-    server.onNotFound(handleNotFound);
-    server.begin();
-    Serial.println("HTTP server started");
-    return false;
-//  }
+  _locip  = locIP;
+  _gateip = gateIP;
+  _subnet = subNET;
 }
 
-#ifdef USE_NTP_SERVER
-  bool md_initNTPTime()
-    {
-      udp.begin(localPort);
-
-      return false;
-    }
-
-  bool md_getTime(time_t *ntpEpoche)
-  {
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      sendNTPpacket(timeServer);
-      delay(1000);
-
-      int cb = udp.parsePacket();
-      cb = cb;
-      udp.read(packetBuffer, NTP_PACKET_SIZE);
-
-      unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-      unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
-
-      unsigned long secsSince1900 = highWord << 16 | lowWord;
-
-      const unsigned long seventyYears = 2208988800UL;
-      //unsigned long epoch = secsSince1900 - seventyYears;
-      *ntpEpoche = secsSince1900 - seventyYears
-                 + UTC_TIMEZONE + UTC_SUMMERTIME * 3600;
-      return false;
-    }
-    return true;
-  }
-#endif
-
-bool md_handleClient()
+bool md_wifi::md_scanWIFI()
 {
-  server.handleClient();
-  return false;
-}
-
-#ifdef USE_NTP_SERVER
-  unsigned long sendNTPpacket(IPAddress& address)
-  {
-    //Serial.println("sending NTP packet...");
-    // set all bytes in the buffer to 0
-    memset(packetBuffer, 0, NTP_PACKET_SIZE);
-    // Initialize values needed to form NTP request
-    // (see URL above for details on the packets)
-    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-    packetBuffer[1] = 0;     // Stratum, or type of clock
-    packetBuffer[2] = 6;     // Polling Interval
-    packetBuffer[3] = 0xEC;  // Peer Clock Precision
-    // 8 bytes of zero for Root Delay & Root Dispersion
-    packetBuffer[12]  = 49;
-    packetBuffer[13]  = 0x4E;
-    packetBuffer[14]  = 49;
-    packetBuffer[15]  = 52;
-
-    // all NTP fields have been given values, now
-    // you can send a packet requesting a timestamp:
-    udp.beginPacket(address, 123); //NTP requests are to port 123
-    udp.write(packetBuffer, NTP_PACKET_SIZE);
-    udp.endPacket();
-    return 0;
-  }
-#endif
-
-#else // CLASS_SERVER
-
-// ------ Setup-Funktionen --------------------------
-bool md_server::md_scanWIFI()
-{
-  bool ret = false;
+  bool ret = MDOK;
   // Set WiFi to station mode and disconnect from an AP if it was previously connected
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
 
-  Serial.println(); Serial.println("WIFI scan start");
+  _ssid = (char*) nossid;
+          Serial.println(); Serial.println("WIFI scan");
 
   // WiFi.scanNetworks will return the number of networks found
   int n = WiFi.scanNetworks();
-  Serial.println("scan done");
   if (n == 0)
   {
-    Serial.println("no networks found");
-    ret = true;
-    //return true;
+          Serial.println("no networks found");
+    ret = MDERR;
   }
   else
   {
-    bool found = false;
-    Serial.print(n);
-    Serial.println(" networks found");
+            Serial.print(n); Serial.println(" networks found");
     for (int i = 0; i < n; ++i)
     {
       // Print SSID and RSSI for each network found
-      Serial.print(i + 1);
+              Serial.print(i + 1);
       if (WiFi.SSID(i) == ssidHM)
       {
         _ssid = (char*) ssidHM;
-        found = true;
-        Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
+                Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
       }
       else if (WiFi.SSID(i) == ssidMAMD)
       {
         _ssid = (char*) ssidMAMD;
-        found = true;
-        Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
+                Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
       }
-      Serial.print(WiFi.SSID(i));
-      Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
-      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-      delay(10);
-      if (found == true)
+      else
       {
-        break;
+              Serial.print("       ");
       }
+
+              Serial.print(WiFi.SSID(i));
+              Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
+              Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+      delay(10);
+              #if (DEBUG_MODE == CFG_DEBUG_NONE)
+                if (_isssid == ON)
+                {
+                  break;
+                }
+              #endif
     }
   }
-  Serial.println("");
-
+  WiFi.disconnect();
+          #if (DEBUG_MODE == CFG_DEBUG_NONE)
+            Serial.println("");
+          #endif
   return ret;
 }
 
-bool md_server::md_startWIFI()
+bool md_wifi::md_startWIFI()
 {
-  bool ret = false;
-// Configures static IP address
-  WiFi.mode(WIFI_STA);
+  bool ret = MDERR;
+          Serial.println("md_startWIFI");
+  if (_isinit == false)
+  {
+    #ifdef WIFI_LOCAL_IP
+      if ( WiFi.config(_locip, _gateip, _subnet /*, primaryDNS, secondaryDNS*/) == false)
+      {
+              #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                Serial.println("STA Failed to configure -> exit");
+              #endif
+        return false;
+      }
+    #endif
 
-  WiFi.disconnect();
+    WiFi.mode(WIFI_STA);
+    WiFi.onEvent(WiFiEvent); // start interrupt handler
+    _isinit = true;
+  }
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.print("disconnect - stat "); Serial.print(WiFi.status());
+            Serial.print(" _isconn "); Serial.println((int8_t) _isconn);
+          #endif
+  WiFi.disconnect();       // disconnect first
   delay(100);
 
-  #ifdef WIFI_LOCAL_IP
-//    if ( WiFi.config(local_IP, gateway, subnet /*, primaryDNS, secondaryDNS*/))
-    if ( WiFi.config(local_IP, gateway, subnet /*, primaryDNS, secondaryDNS*/) == false)
-    {
-      Serial.println("STA Failed to configure");
-      //ret = true;
-      return false;
-    }
-  #endif
-
-  ret = md_scanWIFI();
-  WiFi.begin(_ssid, password);
-  Serial.println("");
-
-  // Wait for connection
-  uint8_t timeout = (uint8_t) WIFI_CONN_REP;
-  while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
+  ret = md_scanWIFI();     // scan WiFi
+  if (ret == MDOK)
   {
-    delay(WIFI_CONN_DELAY);
-    Serial.print(".");
-    timeout--;
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.print("nach scan _isssid = ");Serial.println((int8_t) _isssid);
+          #endif
+
+    WiFi.begin(_ssid, password); // start connection
+    Serial.println("");
+
+    // Wait for connection
+    uint8_t timeout = (uint8_t) WIFI_CONN_REP;
+    while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
+    {
+      delay(WIFI_CONN_DELAY);
+              #if (DEBUG_MODE > CFG_DEBUG_NONE)
+                Serial.print(".");
+              #endif
+      timeout--;
+    }
   }
 
   if (WiFi.status() == WL_CONNECTED)
   {
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(_ssid);
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
+            #if (DEBUG_MODE > CFG_DEBUG_NONE)
+              Serial.println("");
+              Serial.print("Connected to ");
+              Serial.println(_ssid);
+              Serial.print("IP address: ");
+              Serial.println(WiFi.localIP());
+              Serial.print("MAC address: ");
+              Serial.println(WiFi.macAddress());
+            #endif
     if (MDNS.begin("esp32"))
     {
-      Serial.println("MDNS responder started");
+              #if (DEBUG_MODE > CFG_DEBUG_NONE)
+                Serial.println("MDNS responder started");Serial.println();
+              #endif
     }
-    #ifdef USE_NTP_SERVER
-      md_initNTPTime();
-    #endif
+//    #ifdef USE_NTP_SERVER
+//      md_initNTPTime();
+//    #endif
   }
   else
   {
-    Serial.println("Connection failed -> timout");
-    ret = true;
+    ret = MDERR;
+            #if (DEBUG_MODE > CFG_DEBUG_NONE)
+              Serial.println("Connection failed -> timout");
+            #endif
   }
   return ret;
 }
 
-bool md_server::md_startServer()
-{
-    server.on("/", handleRoot);
-    server.on("/test.svg", drawGraph);
-    server.on("/inline", []()
-      {
-        server.send(200, "text/plain", "this works as well");
-      });
-    server.onNotFound(handleNotFound);
-    server.begin();
-    Serial.println("HTTP server started");
-    return false;
-//  }
-}
-
 #ifdef USE_NTP_SERVER
-  bool md_server::md_initNTPTime()
+  bool md_wifi::md_initNTPTime()
     {
       udp.begin(localPort);
 
-      return false;
+      return MDOK;
     }
 
-  bool md_server::md_getTime(time_t *ntpEpoche)
+  bool md_wifi::md_getTime(time_t *ntpEpoche)
   {
     if (WiFi.status() == WL_CONNECTED)
     {
       md_sendNTPpacket(timeServer);
-      delay(1000);
+      sleep(1);
+      //delay(1000);
 
       int cb = udp.parsePacket();
-      cb = cb;
-      udp.read(packetBuffer, NTP_PACKET_SIZE);
+Serial.print("parsePacket cb = "); Serial.println(cb);
+      if (cb > 0)
+      {
+        cb = udp.read(packetBuffer, NTP_PACKET_SIZE);
+Serial.print("read Packet cb = "); Serial.println(cb);
+        if (cb == NTP_PACKET_SIZE)
+        {
+          unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+          unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
 
-      unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-      unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+          unsigned long secsSince1900 = highWord << 16 | lowWord;
 
-      unsigned long secsSince1900 = highWord << 16 | lowWord;
-
-      const unsigned long seventyYears = 2208988800UL;
-      //unsigned long epoch = secsSince1900 - seventyYears;
-      *ntpEpoche = secsSince1900 - seventyYears
-                 + UTC_TIMEZONE + UTC_SUMMERTIME * 3600;
-      return false;
+          const unsigned long seventyYears = 2208988800UL;
+          //unsigned long epoch = secsSince1900 - seventyYears;
+          *ntpEpoche = secsSince1900 - seventyYears
+                     + UTC_TIMEZONE + UTC_SUMMERTIME * 3600;
+          return MDOK;
+        }
+      }
     }
-    return true;
+    return MDERR;
   }
-#endif
 
-bool md_server::md_handleClient()
-{
-  server.handleClient();
-  return false;
-}
-
-#ifdef USE_NTP_SERVER
-  uint64_t md_server::md_sendNTPpacket(IPAddress& address)
+  uint64_t md_wifi::md_sendNTPpacket(IPAddress& address)
   {
     //Serial.println("sending NTP packet...");
     // set all bytes in the buffer to 0
@@ -509,10 +432,28 @@ bool md_server::md_handleClient()
 #endif
 
 
+// ------ class md_server --------------------------
 
+bool md_server::md_startServer()
+{
+    webServ.on("/", handleRoot);
+    webServ.on("/test.svg", drawGraph);
+    webServ.on("/inline", []()
+      {
+        webServ.send(200, "text/plain", "this works as well");
+      });
+    webServ.onNotFound(handleNotFound);
+    webServ.begin();
+    Serial.println("HTTP server started");
+    return false;
+//  }
+}
 
-
-#endif // CLASS_SERVER
+bool md_server::md_handleClient()
+{
+  webServ.handleClient();
+  return false;
+}
 
 #ifdef Dummy
 void setup()
