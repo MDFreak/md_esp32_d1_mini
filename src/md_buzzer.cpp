@@ -1,34 +1,141 @@
-#include "md_buzzer.h"
+
+#include <Arduino.h>
+#include "config.h"
 
 #ifdef USE_BUZZER
+  #include "md_buzzer.h"
 
-  // initializing variables for playing melody
-  #define HAENSCHEN_KLEIN  1
-  //#define ALLE_VOEGLEIN    2
-  //#define ALLE_ENTCHEN     3
-  #define ANZ_SONGS        1
+  #ifdef USE_SONGTASK
+    TaskHandle_t songTask;
+  #endif
 
-  //uint16_t lenSongs[ANZ_SONGS] = {sizeof(song1)};
-  //tone_t *psongs[ANZ_SONGS   ] = {       song1 }; // , song2, song3};
+  #define PLAYER_IS_FREE false
+  #define OCUPIED        true
 
-  // MUSIK_ANZ_LIEDER
-
-  // ---- Lieder --------------------------
-  // ---- Haenschen klein
-
-  // ---- Alle Voeglein sind schon da
-
-  void md_buzzer::playSong(uint8_t idx)
+  typedef struct
   {
-    for (int ii = 0; ii < lenSongs[idx]; ii++)
+    int8_t   note;     // NOTE_C .. NOTE_B
+    int8_t   octa;     // oktave 0 .. 7
+    uint64_t beat;     // MB1 = base
+  } tone_t;
+
+  const uint16_t len1    = 8;
+  const tone_t   song1[] =
+      { // Haenschen klein
+        {NOTE_G ,0,MB4 },{NOTE_E ,0, MB4 },{NOTE_E,0,MB4 },{PAUSE,0, MB4 },
+        {NOTE_F ,0,MB4 },{NOTE_D ,0, MB4 },{NOTE_D,0,MB4 },{PAUSE,0, MB4 }
+      };
+//        ,
+//        {  n1C, M_T4},{  n1D, M_T4},{  n1E, M_T4},{  n1F, M_T4},
+//        {  n1G, M_T4},{  n1G, M_T4},{  n1G, M_T4},{PAUSE, M_T4}
+//      };
+
+  int8_t nextSong = NN;    // command in
+  bool   waitSong = true;  // semaphore out -> wait until finished
+
+  // --- private prottypes
+  #ifdef USE_SONGTASK
+    void playSong(void * pvParameters);
+  #endif
+  // --- public implementation
+
+  void initMusic()
+  {
+    ledcAttachPin(PIN_BUZZ, PWM_BUZZ);
+    Serial.print(millis());
+    Serial.println(" initMusic .. Song einlesen");
+
+    #ifdef USE_SONGTASK
+      xTaskCreatePinnedToCore(
+                          playSong,   /* Task function. */
+                          "Task1",     /* name of task. */
+                          10000,       /* Stack size of task */
+                          NULL,        /* parameter of the task */
+                          4 | portPRIVILEGE_BIT,           /* priority of the task */
+                          &songTask,      /* Task handle to keep track of created task */
+                          1);          /* pin task to core 0 */
+    #endif
+    Serial.print(millis());
+    Serial.println(" .. initMusic finished");
+    usleep(500000);
+  }
+
+  bool setSong(int8_t song)
+  {
+        Serial.print(millis());
+        Serial.print(" setSong "); Serial.print(song);
+    // check semaphore
+    if ((waitSong == PLAYER_IS_FREE) || (nextSong == NN))
     {
-      // pin8 output the voice, every scale is 0.5 sencond
-      ledcWriteNote(IO_BUZZER, psongs[ii]->note, psongs[ii]->dauer); // melody[thisNote], duration);
-
-      // Output the voice after several minutes
-      delay(1000);
+      nextSong = song;
+            Serial.println("ok");
+      return MDOK;
     }
+    else
+    {
+            Serial.println(" ERR");
+      return MDERR;
+    }
+  }
 
+  // --- private ------------------------------
+  #ifdef USE_SONGTASK
+    void playSong(void * pvParameters)
+  #else
+    void playSong()
+  #endif
+  {
+    song_t* psong;
+    tone_t* pnote;
+
+        Serial.print(millis());
+        Serial.println(" playSong .. ");
+    #ifdef USE_SONGTASK
+      // endless loop
+      while (true)
+    #endif
+    {
+      // Ckeck, if song is to play
+      if (nextSong != NN)
+      {
+        waitSong = true;
+        nextSong = NN;
+
+                Serial.print(millis());
+                Serial.print(" psong = "); Serial.println((int) psong);
+                Serial.print(" .. nextSong = "); Serial.println(nextSong);
+        psong  = &(songs[nextSong]);
+                Serial.print("pnote = "); Serial.println((int) psong->pton);
+        pnote  = psong->pton;
+
+                Serial.println("for ii ");
+        for (uint16_t ii = 0; ii < 8/*psong->len*/; ii++)
+        {
+          if (pnote->note == PAUSE)
+          {
+                Serial.print(millis());
+                Serial.print(" ->PAUSE "); Serial.println(ii);
+            ledcWriteTone(PWM_BUZZ, 0.0);
+          }
+          else
+          {
+                Serial.print(millis());
+                Serial.print(" ->NOTE "); Serial.println(ii);
+            ledcWriteNote(PWM_BUZZ, (note_t) pnote->note, pnote->octa);
+          }
+
+          usleep(pnote->beat >> 1);      // duration tone
+
+                Serial.print(millis());
+                Serial.print(" ->END "); Serial.println(ii);
+          ledcWriteTone(PWM_BUZZ, 0.0);  // switch off
+
+          usleep(pnote->beat >> 1);      // duration off
+        }
+        waitSong = OCUPIED;
+      }
+      sleep(1);
+    }
   }
 
   /* Example

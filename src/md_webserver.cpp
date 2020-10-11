@@ -219,6 +219,33 @@ void handleNotFound()
 
 // ------ class md_wifi --------------------------
 
+md_wifi::md_wifi()
+{
+  _isinit = false;
+  _ssid   = (char*) nossid;
+}
+
+bool md_wifi::md_initWIFI()
+{
+          Serial.println();
+          Serial.print(millis()); Serial.print(" initWIFI .. ");
+  #ifdef WIFI_LOCAL_IP
+    setLocIP();
+    WiFi.mode(WIFI_STA);
+    if ( WiFi.config(_locip, _gateip, _subnet /*, primaryDNS, secondaryDNS*/) == false)
+    {
+            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+              Serial.println("STA Failed to configure -> exit");
+            #endif
+      return MDERR;
+    }
+  #endif
+  WiFi.onEvent(WiFiEvent); // start interrupt handler
+  _isinit = true;
+        Serial.println(" OK");
+  return MDOK;
+}
+
 void md_wifi::setLocIP()
 {
   _locip  = locIP;
@@ -228,21 +255,22 @@ void md_wifi::setLocIP()
 
 bool md_wifi::md_scanWIFI()
 {
-  bool ret = MDOK;
+  if (!_isinit)
+  {
+    return MDERR;
+  }
   // Set WiFi to station mode and disconnect from an AP if it was previously connected
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
 
   _ssid = (char*) nossid;
-          Serial.println(); Serial.println("WIFI scan");
+          Serial.println();
+          Serial.print(millis()); Serial.println(" WIFI scan");
+  usleep(10000);
 
   // WiFi.scanNetworks will return the number of networks found
   int n = WiFi.scanNetworks();
   if (n == 0)
   {
           Serial.println("no networks found");
-    ret = MDERR;
   }
   else
   {
@@ -269,76 +297,55 @@ bool md_wifi::md_scanWIFI()
               Serial.print(WiFi.SSID(i));
               Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
               Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-      delay(10);
-              #if (DEBUG_MODE == CFG_DEBUG_NONE)
-                if (_isssid == ON)
-                {
-                  break;
-                }
-              #endif
+      usleep(10000);
     }
   }
-  WiFi.disconnect();
-          #if (DEBUG_MODE == CFG_DEBUG_NONE)
-            Serial.println("");
-          #endif
-  return ret;
+//  WiFi.disconnect();
+  if (_ssid != nossid) { return MDOK; }
+  else                 { return MDERR; };
 }
 
 bool md_wifi::md_startWIFI()
 {
-  bool ret = MDERR;
-          Serial.println("md_startWIFI");
-  if (_isinit == false)
-  {
-    #ifdef WIFI_LOCAL_IP
-      if ( WiFi.config(_locip, _gateip, _subnet /*, primaryDNS, secondaryDNS*/) == false)
-      {
-              #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                Serial.println("STA Failed to configure -> exit");
-              #endif
-        return false;
-      }
-    #endif
+          Serial.print(millis());
+          Serial.println(" md_startWIFI");
+//          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+//            Serial.print("disconnect - stat "); Serial.println(WiFi.status());
+//          #endif
+//  WiFi.disconnect();       // disconnect first
+//  usleep(100000);
 
-    WiFi.mode(WIFI_STA);
-    WiFi.onEvent(WiFiEvent); // start interrupt handler
-    _isinit = true;
+//  ret = md_scanWIFI();     // scan WiFi
+  if (_ssid == nossid)
+  { // keine SSID
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.print(millis());
+            Serial.println(" SSID nicht initialisiert ");
+          #endif
+    return MDERR;
   }
-          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-            Serial.print("disconnect - stat "); Serial.print(WiFi.status());
-            Serial.print(" _isconn "); Serial.println((int8_t) _isconn);
-          #endif
-  WiFi.disconnect();       // disconnect first
-  delay(100);
 
-  ret = md_scanWIFI();     // scan WiFi
-  if (ret == MDOK)
+  WiFi.begin(_ssid, password); // start connection
+  Serial.println(""); Serial.println(millis());
+
+  // Wait for connection
+  usleep(WIFI_CONN_DELAY);
+  uint8_t repOut = (uint8_t) WIFI_CONN_REP;
+  while ((WiFi.status() != WL_CONNECTED) && (repOut > 0))
   {
-          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-            Serial.print("nach scan _isssid = ");Serial.println((int8_t) _isssid);
-          #endif
-
-    WiFi.begin(_ssid, password); // start connection
-    Serial.println("");
-
-    // Wait for connection
-    uint8_t timeout = (uint8_t) WIFI_CONN_REP;
-    while ((WiFi.status() != WL_CONNECTED) && (timeout > 0))
-    {
-      delay(WIFI_CONN_DELAY);
-              #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                Serial.print(".");
-              #endif
-      timeout--;
-    }
+            #if (DEBUG_MODE > CFG_DEBUG_NONE)
+              Serial.print(".");
+            #endif
+    usleep(WIFI_CONN_DELAY);
+    repOut--;
   }
 
   if (WiFi.status() == WL_CONNECTED)
   {
             #if (DEBUG_MODE > CFG_DEBUG_NONE)
               Serial.println("");
-              Serial.print("Connected to ");
+              Serial.print(millis());
+              Serial.print(" Connected to ");
               Serial.println(_ssid);
               Serial.print("IP address: ");
               Serial.println(WiFi.localIP());
@@ -351,18 +358,15 @@ bool md_wifi::md_startWIFI()
                 Serial.println("MDNS responder started");Serial.println();
               #endif
     }
-//    #ifdef USE_NTP_SERVER
-//      md_initNTPTime();
-//    #endif
+    return MDOK;
   }
   else
   {
-    ret = MDERR;
             #if (DEBUG_MODE > CFG_DEBUG_NONE)
               Serial.println("Connection failed -> timout");
             #endif
   }
-  return ret;
+  return MDERR;
 }
 
 #ifdef USE_NTP_SERVER

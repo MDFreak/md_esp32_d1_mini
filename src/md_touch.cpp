@@ -27,18 +27,26 @@
 
   bool md_touch::startTouch()
   {
-    #if (USE_PROJECT == 1)
-      initTFT(TFT_BL);
-      clearTFT();
-      drawKeypad();
-      wrStatus("TFT&Touch started");
-      return MDOK;
-    #else
-      initTFT(TFT_BL);
-      drawScreen();
-      drawKeypad();
-      return MDOK;
-    #endif
+        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+          Serial.println("md_touch::startTouch .. initTFT .."); delay(100);
+        #endif
+    initTFT(TFT_BL);
+        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+          Serial.println(".. clearTFT .."); delay(100);
+        #endif
+    clearTFT();
+        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+          Serial.println(".. drawKeypad .."); delay(100);
+        #endif
+    drawKeypad();
+        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+          Serial.println(".. wrstatus .."); delay(100);
+        #endif
+    wrStatus("TFT&Touch started");
+        #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+          Serial.println("md_touch::startTouch ready"); delay(100);
+        #endif
+    return MDOK;
   }
 
   bool md_touch::calTouch() // calibrate touch
@@ -135,9 +143,8 @@
 
   bool md_touch::runTouch(char* pStatus)
     {
-      #if (USE_PROJECT == 1)
-        return false;
-      #else
+      return false;
+      #ifdef DUMMY
         uint16_t t_x = 0, t_y = 0; // To store the touch coordinates
 
         // Pressed will be set true is there is a valid touch on the screen
@@ -255,7 +262,8 @@
         res = 2;
         isStatus = false;
               #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                Serial.print((uint32_t) millis()); Serial.println(" Statuszeile loeschen");
+                Serial.print((uint32_t) millis());
+                Serial.println(" Statuszeile loeschen");
               #endif
       }
     }
@@ -274,7 +282,8 @@
           stayTime = STAT_TIMEDEF;
         }
               #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                Serial.print((uint32_t) millis()); Serial.println(" Statuszeile schreiben");
+                Serial.print((uint32_t) millis());
+                Serial.println(" Statuszeile schreiben");
               #endif
       }
 
@@ -297,82 +306,45 @@
   // ------ private implementation ------------
   bool md_touch::drawScreen()
   {
-    #if (USE_PROJECT == 1)
-      // Draw keypad background
-      tft.fillRect(0, 0, 240, 320, TFT_DARKGREY);
-      // Draw number display area and frame
-      tft.fillRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_BLACK);
-      tft.drawRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_WHITE);
-      return MDOK;
-    #else
-      return MDOK;
-    #endif
+    // Draw keypad background
+    tft.fillRect(0, 0, 240, 320, TFT_DARKGREY);
+    // Draw number display area and frame
+    tft.fillRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_BLACK);
+    tft.drawRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_WHITE);
+    return MDOK;
   }
 
   bool md_touch::drawKeypad()
   {
-    #if (USE_PROJECT == 1)
-      // Draw the keys
-      for (uint8_t col = 0; col < 3; col++)
-      {
-        tft.setFreeFont(NORM_FONT);
-        tft.setFreeFont(BOLD_FONT);
+    // Draw the keys
+    for (uint8_t col = 0; col < 3; col++)
+    {
+      tft.setFreeFont(NORM_FONT);
+      tft.setFreeFont(BOLD_FONT);
 
-        key[col].initButton(&tft,
-                          KEY_X + col * (KEY_W + KEY_SPACING_X),
-                          KEY_Y /* + row * (KEY_H + KEY_SPACING_Y)*/, // x, y, w, h, outline, fill, text
-                          KEY_W, KEY_H, TFT_WHITE,
-                          keyColor[col], labelColor[col],
-                          keyLabel[col], KEY_TEXTSIZE);
-        key[col].drawButton();
-      }
-      return MDOK;
-    #else
-      // Draw the keys
-      for (uint8_t row = 0; row < 5; row++)
-      {
-        for (uint8_t col = 0; col < 3; col++)
-        {
-          uint8_t b = col + row * 3;
-
-          if (b < 3)
-          {
-            tft.setFreeFont(NORM_FONT);
-          }
-          else
-          {
-            tft.setFreeFont(BOLD_FONT);
-          }
-
-          key[b].initButton(&tft,
-                            KEY_X + col * (KEY_W + KEY_SPACING_X),
-                            KEY_Y + row * (KEY_H + KEY_SPACING_Y), // x, y, w, h, outline, fill, text
-                            KEY_W, KEY_H, TFT_WHITE,
-                            keyColor[b], TFT_WHITE,
-                            keyLabel[b], KEY_TEXTSIZE);
-          key[b].drawButton();
-        }
-      }
-      return MDOK;
-    #endif
+      key[col].initButton(&tft,
+                        KEY_X + col * (KEY_W + KEY_SPACING_X),
+                        KEY_Y /* + row * (KEY_H + KEY_SPACING_Y)*/, // x, y, w, h, outline, fill, text
+                        KEY_W, KEY_H, TFT_WHITE,
+                        keyColor[col], labelColor[col],
+                        keyLabel[col], KEY_TEXTSIZE);
+      key[col].drawButton();
+    }
+    return MDOK;
   }
 
   bool md_touch::drawStatus(char* outStat)
   {
-    #if (USE_PROJECT == 1)
-      tft.fillRect(STATUS_XLI, STATUS_YOB, STATUS_XRE, STATUS_YUN, STATUS_BCOL);
-      tft.setTextPadding(240);
-      //tft.setCursor(STATUS_X, STATUS_Y);
-      tft.setTextColor(STATUS_FCOL, STATUS_BCOL);
-      tft.setTextDatum(MC_DATUM);
+    tft.fillRect(STATUS_XLI, STATUS_YOB, STATUS_XRE, STATUS_YUN, STATUS_BCOL);
+    tft.setTextPadding(240);
+    //tft.setCursor(STATUS_X, STATUS_Y);
+    tft.setTextColor(STATUS_FCOL, STATUS_BCOL);
+    tft.setTextDatum(MC_DATUM);
 
-      tft.setTextFont(1);
-      tft.setTextSize(2);
-      tft.drawString(outStat, STATUS_XCENT, STATUS_YCENT);
-      return MDOK;
-    #else
-      return MDOK;
-    #endif
+    tft.setTextFont(1);
+    tft.setTextSize(2);
+    tft.drawString(outStat, STATUS_XCENT, STATUS_YCENT);
+    return MDOK;
 }
 
   // Print something in the mini status bar

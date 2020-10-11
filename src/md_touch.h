@@ -9,12 +9,10 @@
     #include <SPI.h>
     #include <TFT_eSPI.h>      // Hardware-specific library
 
-
-    #if (USE_PROJECT == 1)
       // Using two fonts since numbers are nice when bold
-      #define NORM_FONT &FreeSansOblique12pt7b // Key label font 1
-      #define BOLD_FONT &FreeSansBold12pt7b    // Key label font 2
-    #else
+    #define NORM_FONT &FreeSansOblique12pt7b // Key label font 1
+    #define BOLD_FONT &FreeSansBold12pt7b    // Key label font 2
+    #ifdef DUMMY
       // Keypad start position, key sizes and spacing
       #define KEY_X 40 // Centre of key
       #define KEY_Y 96
