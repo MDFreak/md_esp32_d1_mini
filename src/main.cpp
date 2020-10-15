@@ -127,7 +127,7 @@ char          outBuf[2*STAT_LINELEN] = "";
   void startWebServer()
   {
     bool ret = MDERR;
-    if ((md_error & ERRBIT_SERVER) == 0)
+    if ((md_error & ERRBIT_SERVER) != 0)
     {
       #ifdef USE_TOUCHSCREEN
         while (touch.wrStatus("start webserver"));
@@ -213,6 +213,7 @@ void setup()
 
   { // start buzzer (task)
     #ifdef USE_BUZZER
+      pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
       initMusic();
       while (setSong(SONG_HAENSCHEN_KLEIN) == MDERR);
       playSong();
@@ -301,7 +302,7 @@ void loop()
       if (servT.TOut()) // run webserver - restart on error
       {
         servT.startT();
-        if (md_error & ERRBIT_SERVER)
+        if ((md_error & ERRBIT_SERVER) != 0)
         {
           startWebServer();
         }

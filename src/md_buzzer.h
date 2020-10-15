@@ -7,11 +7,25 @@
   #ifdef USE_BUZZER
     #define BEAT_UNITS
     #ifdef BEAT_UNITS
-      #define MB1   MUSIC_BEAT_UNIT    // ganze Note = Grundtakt
-      #define MB2   MB1  / 2
-      #define MB4   MB1  / 4
-      #define MB8   MB1  / 8
-      #define MB16  MB1  / 16
+      #define MBL4  MUSIC_BEAT_UNIT * 4
+      #define MBL3  MUSIC_BEAT_UNIT * 3
+      #define MBL2  MUSIC_BEAT_UNIT * 2
+      #define MB1   MUSIC_BEAT_UNIT       // 4/4 note = basebeat
+      #define MB2   MUSIC_BEAT_UNIT / 2
+      #define MB4   MUSIC_BEAT_UNIT / 4
+      #define MB8   MUSIC_BEAT_UNIT / 8
+      #define MB16  MUSIC_BEAT_UNIT / 16
+    #endif
+
+    #ifdef MUSIC_BASE_OCTA
+      #define ON3   MUSIC_BASE_OCTA + 3  // octave negative 1
+      #define ON2   MUSIC_BASE_OCTA + 2  // octave negative 1
+      #define ON1   MUSIC_BASE_OCTA + 1  // octave negative 1
+      #define OP0   MUSIC_BASE_OCTA      // (base-) octave positiv 0
+      #define OP1   MUSIC_BASE_OCTA - 1  // octave positiv 1
+      #define OP2   MUSIC_BASE_OCTA - 2  // octave positiv 1
+      #define OP3   MUSIC_BASE_OCTA - 3  // octave positiv 1
+      #define OP4   MUSIC_BASE_OCTA - 4  // octave positiv 1
     #endif
 
     #define PAUSE   -1

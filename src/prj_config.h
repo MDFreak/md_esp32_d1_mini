@@ -9,7 +9,7 @@
     #define TASK_SLICE_T  5000ul   // task beat [us]
 
     #define USE_TOUCHSCREEN
-    #define USE_BUZZER
+    //#define USE_BUZZER
     // --- network
     #define USE_WIFI
     #define USE_WEBSERVER
@@ -59,6 +59,7 @@
 
   #ifdef USE_BUZZER
     #define MUSIC_BEAT_UNIT 1000000ul // unit beat time -> 4/4 [us]
+    #define MUSIC_BASE_OCTA 5        // base oktave for musik
     //#define USE_SONGTASK
   #endif // USE_BUZZER
 

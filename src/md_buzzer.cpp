@@ -19,16 +19,39 @@
     uint64_t beat;     // MB1 = base
   } tone_t;
 
-  const uint16_t len1    = 8;
-  const tone_t   song1[] =
-      { // Haenschen klein
-        {NOTE_G ,0,MB4 },{NOTE_E ,0, MB4 },{NOTE_E,0,MB4 },{PAUSE,0, MB4 },
-        {NOTE_F ,0,MB4 },{NOTE_D ,0, MB4 },{NOTE_D,0,MB4 },{PAUSE,0, MB4 }
-      };
-//        ,
-//        {  n1C, M_T4},{  n1D, M_T4},{  n1E, M_T4},{  n1F, M_T4},
-//        {  n1G, M_T4},{  n1G, M_T4},{  n1G, M_T4},{PAUSE, M_T4}
-//      };
+  #if (ANZ_SONGS > 0)
+    const uint16_t len1    = 30;
+    const tone_t   song1[] =
+        { // Haenschen klein
+          {NOTE_G ,OP0,MB4 },{NOTE_E ,OP0, MB4 },{NOTE_E ,OP0,MB4 },{ PAUSE ,OP0, MB4 },
+          {NOTE_F ,OP0,MB4 },{NOTE_D ,OP0, MB4 },{NOTE_D ,OP0,MB4 },{ PAUSE ,OP0, MB4 },
+
+          {NOTE_C ,OP0,MB4 },{NOTE_D ,OP0, MB4 },{NOTE_E ,OP0,MB4 },{NOTE_F ,OP0, MB4 },
+          {NOTE_G ,OP0,MB4 },{NOTE_G ,OP0, MB4 },{NOTE_G ,OP0,MB4 },{ PAUSE ,OP0, MB4 },
+
+          {NOTE_G ,OP0,MB4 },{NOTE_E ,OP0, MB4 },{NOTE_E ,OP0,MB4 },{ PAUSE ,OP0, MB4 },
+          {NOTE_F ,OP0,MB4 },{NOTE_D ,OP0, MB4 },{NOTE_D ,OP0,MB4 },{ PAUSE ,OP0, MB4 },
+
+          {NOTE_C ,OP0,MB4 },{NOTE_E ,OP0, MB4 },{NOTE_G ,OP0,MB4 },{NOTE_G ,OP0, MB4 },
+          {NOTE_C ,OP0,MB2},{ PAUSE ,OP0, MB2}
+        };
+  #endif
+  #if (ANZ_SONGS > 1)
+    const uint16_t len2    = 8;
+    const tone_t   song2[] =
+        { // Haenschen klein
+          {NOTE_G ,0,MB4 },{NOTE_E ,0, MB4 },{NOTE_E,0,MB4 },{PAUSE,0, MB4 },
+          {NOTE_F ,0,MB4 },{NOTE_D ,0, MB4 },{NOTE_D,0,MB4 },{PAUSE,0, MB4 }
+        };
+  #endif
+  #if (ANZ_SONGS > 2)
+    const uint16_t len3    = 8;
+    const tone_t   song3[] =
+        { // Haenschen klein
+          {NOTE_G ,0,MB4 },{NOTE_E ,0, MB4 },{NOTE_E,0,MB4 },{PAUSE,0, MB4 },
+          {NOTE_F ,0,MB4 },{NOTE_D ,0, MB4 },{NOTE_D,0,MB4 },{PAUSE,0, MB4 }
+        };
+  #endif
 
   int8_t nextSong = NN;    // command in
   bool   waitSong = true;  // semaphore out -> wait until finished
@@ -60,58 +83,104 @@
     usleep(500000);
   }
 
-  bool setSong(int8_t song)
+  bool setSong(int8_t songIdx)
   {
         Serial.print(millis());
-        Serial.print(" setSong "); Serial.print(song);
+        Serial.print(" setSong "); Serial.print(songIdx);
     // check semaphore
     if ((waitSong == PLAYER_IS_FREE) || (nextSong == NN))
     {
-      nextSong = song;
-            Serial.println("ok");
-      return MDOK;
+      if (songIdx < ANZ_SONGS)
+      {
+        nextSong = songIdx;
+              Serial.println("ok");
+        return MDOK;
+      }
+      else
+      {
+            Serial.println(" ERR idx too high");
+      }
+
     }
     else
     {
             Serial.println(" ERR");
-      return MDERR;
     }
+    return MDERR;
   }
 
   // --- private ------------------------------
-  #ifdef USE_SONGTASK
-    void playSong(void * pvParameters)
-  #else
-    void playSong()
-  #endif
+  void playSong()
   {
-    song_t* psong;
-    tone_t* pnote;
-
-        Serial.print(millis());
-        Serial.println(" playSong .. ");
-    #ifdef USE_SONGTASK
-      // endless loop
-      while (true)
-    #endif
     {
+            Serial.print(millis());
+            Serial.println(" playSong .. ");
+
       // Ckeck, if song is to play
       if (nextSong != NN)
       {
-        waitSong = true;
+        int8_t   _song = nextSong;
+        note_t   _note = (note_t) PAUSE;     // NOTE_C .. NOTE_B
+        int8_t   _octa = 0;     // oktave 0 .. 7
+        uint64_t _beat = 0;     // MB1 = base
+        uint16_t _len  = 0;
+
+        waitSong = OCUPIED;
         nextSong = NN;
 
                 Serial.print(millis());
-                Serial.print(" psong = "); Serial.println((int) psong);
-                Serial.print(" .. nextSong = "); Serial.println(nextSong);
-        psong  = &(songs[nextSong]);
-                Serial.print("pnote = "); Serial.println((int) psong->pton);
-        pnote  = psong->pton;
+                Serial.print(" nextSong = "); Serial.print(nextSong);
+                Serial.print(" _song = "); Serial.println(_song);
 
                 Serial.println("for ii ");
-        for (uint16_t ii = 0; ii < 8/*psong->len*/; ii++)
+
+        switch (_song)
         {
-          if (pnote->note == PAUSE)
+          case 0:
+            _len = len1;
+            break;
+            #if (ANZ_SONGS > 1)
+              case 1:
+                _len = len2;
+                break;
+            #endif
+            #if (ANZ_SONGS > 2)
+              case 2:
+                _len = len3;
+                break;
+            #endif
+          default:
+            break;
+        }
+
+        for (uint16_t ii = 0; ii < _len; ii++)
+        {
+          switch (_song)
+          {
+            case 0:
+              _note = (note_t) song1[ii].note;
+              _beat = song1[ii].beat;
+              _octa = song1[ii].octa;
+              break;
+            #if (ANZ_SONGS > 1)
+              case 1:
+                _note = (note_t) song2[ii].note;
+                _beat = song2[ii].beat;
+                _octa = song2[ii].octa;
+                break;
+            #endif
+            #if (ANZ_SONGS > 2)
+              case 2:
+                _note = (note_t) song3[ii].note;
+                _beat = song3[ii].beat;
+                _octa = song3[ii].octa;
+                break;
+            #endif
+          default:
+            break;
+        }
+
+          if (_note == PAUSE)
           {
                 Serial.print(millis());
                 Serial.print(" ->PAUSE "); Serial.println(ii);
@@ -120,19 +189,20 @@
           else
           {
                 Serial.print(millis());
-                Serial.print(" ->NOTE "); Serial.println(ii);
-            ledcWriteNote(PWM_BUZZ, (note_t) pnote->note, pnote->octa);
+                Serial.print(" ->NOTE "); Serial.print(_note);
+                Serial.print(" ->OCTA "); Serial.println(_octa);
+            ledcWriteNote(PWM_BUZZ, _note, _octa);
           }
 
-          usleep(pnote->beat >> 1);      // duration tone
+          usleep(_beat);      // duration tone = beat/2
 
                 Serial.print(millis());
                 Serial.print(" ->END "); Serial.println(ii);
           ledcWriteTone(PWM_BUZZ, 0.0);  // switch off
 
-          usleep(pnote->beat >> 1);      // duration off
+          usleep(_beat);      // pause
         }
-        waitSong = OCUPIED;
+        waitSong = PLAYER_IS_FREE;
       }
       sleep(1);
     }
