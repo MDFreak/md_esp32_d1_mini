@@ -4,20 +4,20 @@
   TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 
   // This is the file name used to store the calibration data
-  // You can change this to create new calibration files.
-  // The SPIFFS file name must start with "/".
+    // You can change this to create new calibration files.
+    // The SPIFFS file name must start with "/".
   #define CALIBRATION_FILE "/TouchCalData1"
 
   // Set REPEAT_CAL to true instead of false to run calibration
-  // again, otherwise it will only be done once.
-  // Repeat calibration if you change the screen rotation.
+    // again, otherwise it will only be done once.
+    // Repeat calibration if you change the screen rotation.
   #define REPEAT_CAL false
 
   // Keypad start position, key sizes and spacing
   char numberBuffer[KEY_NUM_LEN + 1] = "";
   uint8_t numberIndex = 0;
 
-  // Create 15 keys for the keypad
+  // create  keys for the keypad
   char     keyLabel[KEY_NUM_LEN][5] = {"SET", "DO", "OK"};
   uint16_t keyColor[KEY_NUM_LEN] = {TFT_GREENYELLOW, TFT_GREENYELLOW, TFT_RED};
   uint16_t labelColor[KEY_NUM_LEN] = {TFT_NAVY, TFT_NAVY, TFT_GREENYELLOW};
@@ -25,121 +25,122 @@
   // Invoke the TFT_eSPI button class and create all the button objects
   TFT_eSPI_Button key[KEY_NUM_LEN];
 
+  // public implementation
   bool md_touch::startTouch()
-  {
-        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-          Serial.println("md_touch::startTouch .. initTFT .."); delay(100);
-        #endif
-    initTFT(TFT_BL);
-        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-          Serial.println(".. clearTFT .."); delay(100);
-        #endif
-    clearTFT();
-        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-          Serial.println(".. drawKeypad .."); delay(100);
-        #endif
-    drawKeypad();
-        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-          Serial.println(".. wrstatus .."); delay(100);
-        #endif
-    wrStatus("TFT&Touch started");
-        #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
-          Serial.println("md_touch::startTouch ready"); delay(100);
-        #endif
-    return MDOK;
-  }
-
-  bool md_touch::calTouch() // calibrate touch
-  {
-    uint16_t calData[5];
-    uint8_t calDataOK = 0;
-
-    // check file system exists
-    if (!SPIFFS.begin())
     {
-      Serial.println("Formating file system");
-      SPIFFS.format();
-      SPIFFS.begin();
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.println("md_touch::startTouch .. initTFT .."); delay(100);
+          #endif
+      initTFT(TFT_BL);
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.println(".. clearTFT .."); delay(100);
+          #endif
+      clearTFT();
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.println(".. drawKeypad .."); delay(100);
+          #endif
+      drawKeypad();
+          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+            Serial.println(".. wrstatus .."); delay(100);
+          #endif
+      wrStatus("TFT&Touch started");
+          #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+            Serial.println("md_touch::startTouch ready"); delay(100);
+          #endif
+      return MDOK;
     }
 
-    // check if calibration file exists and size is correct
-    if (SPIFFS.exists(CALIBRATION_FILE))
+  bool md_touch::calTouch() // calibrate touch
     {
-      if (REPEAT_CAL)
+      uint16_t calData[5];
+      uint8_t calDataOK = 0;
+
+      // check file system exists
+      if (!SPIFFS.begin())
       {
-        // Delete if we want to re-calibrate
-        SPIFFS.remove(CALIBRATION_FILE);
+        Serial.println("Formating file system");
+        SPIFFS.format();
+        SPIFFS.begin();
+      }
+
+      // check if calibration file exists and size is correct
+      if (SPIFFS.exists(CALIBRATION_FILE))
+      {
+        if (REPEAT_CAL)
+        {
+          // Delete if we want to re-calibrate
+          SPIFFS.remove(CALIBRATION_FILE);
+        }
+        else
+        {
+          File f = SPIFFS.open(CALIBRATION_FILE, "r");
+          if (f)
+          {
+            if (f.readBytes((char *)calData, 14) == 14)
+              calDataOK = 1;
+            f.close();
+          }
+        }
+      }
+
+      if (calDataOK && !REPEAT_CAL)
+      {
+        // calibration data valid
+        tft.setTouch(calData);
       }
       else
       {
-        File f = SPIFFS.open(CALIBRATION_FILE, "r");
+        // data not valid so recalibrate
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(20, 0);
+        tft.setTextFont(2);
+        tft.setTextSize(1);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+        tft.println("Touch corners as indicated");
+
+        tft.setTextFont(1);
+        tft.println();
+
+        if (REPEAT_CAL)
+        {
+          tft.setTextColor(TFT_RED, TFT_BLACK);
+          tft.println("Set REPEAT_CAL to false to stop this running again!");
+        }
+
+        tft.calibrateTouch(calData, TFT_MAGENTA, TFT_BLACK, 15);
+        //   tft.calibrateTouch(calData, TFT_MAGENTA, TFT_BLACK, TFT_CS);
+
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.println("Calibration complete!");
+
+        // store data
+        File f = SPIFFS.open(CALIBRATION_FILE, "w");
         if (f)
         {
-          if (f.readBytes((char *)calData, 14) == 14)
-            calDataOK = 1;
+          f.write((const unsigned char *)calData, 14);
+          //      f.write((const unsigned char *)calData, TOUCH_CS);
           f.close();
         }
       }
+      return false;
     }
-
-    if (calDataOK && !REPEAT_CAL)
-    {
-      // calibration data valid
-      tft.setTouch(calData);
-    }
-    else
-    {
-      // data not valid so recalibrate
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(20, 0);
-      tft.setTextFont(2);
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
-      tft.println("Touch corners as indicated");
-
-      tft.setTextFont(1);
-      tft.println();
-
-      if (REPEAT_CAL)
-      {
-        tft.setTextColor(TFT_RED, TFT_BLACK);
-        tft.println("Set REPEAT_CAL to false to stop this running again!");
-      }
-
-      tft.calibrateTouch(calData, TFT_MAGENTA, TFT_BLACK, 15);
-  //    tft.calibrateTouch(calData, TFT_MAGENTA, TFT_BLACK, TFT_CS);
-
-      tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      tft.println("Calibration complete!");
-
-      // store data
-      File f = SPIFFS.open(CALIBRATION_FILE, "w");
-      if (f)
-      {
-        f.write((const unsigned char *)calData, 14);
-  //      f.write((const unsigned char *)calData, TOUCH_CS);
-        f.close();
-      }
-    }
-    return false;
-  }
 
   bool md_touch::wrTouch(const char *msg, uint8_t spalte, uint8_t zeile ) // write to text area
-  {
-    //Serial.print("Write "); Serial.print(msg); Serial.print(" - "); Serial.print(zeile); Serial.print(" - "); Serial.println(spalte);
-    tft.setTextPadding(240);
-    tft.setTextColor(DISP_TX_FCOL, DISP_TX_BCOL);
-    tft.setTextDatum(L_BASELINE);
+    {
+      //Serial.print("Write "); Serial.print(msg); Serial.print(" - "); Serial.print(zeile); Serial.print(" - "); Serial.println(spalte);
+      tft.setTextPadding(240);
+      tft.setTextColor(DISP_TX_FCOL, DISP_TX_BCOL);
+      tft.setTextDatum(L_BASELINE);
 
-    tft.setTextFont(2);
-    tft.setTextSize(2);
-    //tft.setCursor(spalte, zeile);
-    strncpy(outTxt, msg, STAT_LINELEN - spalte + 1);
-  //  outTxt[STAT_LINELEN - spalte] = 0;
-    tft.drawString(outTxt, spalte * 13, zeile * 29 - 5 );
-    return MDOK;
-  }
+      tft.setTextFont(2);
+      tft.setTextSize(2);
+      //tft.setCursor(spalte, zeile);
+      strncpy(outTxt, msg, STAT_LINELEN - spalte + 1);
+      //  outTxt[STAT_LINELEN - spalte] = 0;
+      tft.drawString(outTxt, spalte * 13, zeile * 29 - 5 );
+      return MDOK;
+    }
 
   bool md_touch::runTouch(char* pStatus)
     {
@@ -243,130 +244,132 @@
     }
 
   bool md_touch::wrStatus() // write status line
-  {
-    return wrStatus("");
-  }
-  bool md_touch::wrStatus(const char *msg)
-  {
-    return wrStatus(msg,STAT_TIMEDEF);
-  }
-  bool md_touch::wrStatus(const char *msg, uint32_t stayTime)
-  {
-    //unsigned long diffTime = millis() - statWrTime;
-    int8_t res = 0; // -1:wait, 0:ok, 1:write , 2:clear
-    bool   ret = MDOK;
-    if(strlen(msg) == 0)
     {
-      if ((isStatus == true) && (clrT.TOut() == true))
-      { // status is visible && timeout
-        res = 2;
-        isStatus = false;
-              #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                Serial.print((uint32_t) millis());
-                Serial.println(" Statuszeile loeschen");
-              #endif
-      }
+      return wrStatus("");
     }
-    else
+    bool md_touch::wrStatus(const char *msg)
     {
-      if ((isStatus == true) && (minT.TOut() == false))
-      { // visible status has to stay
-        res = -1;
+      return wrStatus(msg,STAT_TIMEDEF);
+    }
+    bool md_touch::wrStatus(const char *msg, uint32_t stayTime)
+    {
+      //unsigned long diffTime = millis() - statWrTime;
+      int8_t res = 0; // -1:wait, 0:ok, 1:write , 2:clear
+      bool   ret = MDOK;
+      if(strlen(msg) == 0)
+      {
+        if ((isStatus == true) && (clrT.TOut() == true))
+        { // status is visible && timeout
+          res = 2;
+          isStatus = false;
+                #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
+                  Serial.print((uint32_t) millis());
+                  Serial.println(" Statuszeile loeschen");
+                #endif
+        }
       }
       else
-      { // write it
-        res = 1;
-        isStatus = true;
-        if (stayTime == 0)
-        {
-          stayTime = STAT_TIMEDEF;
-        }
-              #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                Serial.print((uint32_t) millis());
-                Serial.println(" Statuszeile schreiben");
-              #endif
-      }
-
-    }
-    if (res > 0)
-    {
-      memset(outTxt, 0, STAT_LINELEN + 1);
-      if (res == 1)
       {
-        strncpy(outTxt, msg, STAT_LINELEN);
-      }
-      ret = drawStatus(outTxt);
-      minT.startT();              // start timer min time
-      clrT.startT(stayTime);      // start timer max time
-      res = 0;
-    }
-    return (ret || (res != 0));
-  }
+        if ((isStatus == true) && (minT.TOut() == false))
+        { // visible status has to stay
+          res = -1;
+        }
+        else
+        { // write it
+          res = 1;
+          isStatus = true;
+          if (stayTime == 0)
+          {
+            stayTime = STAT_TIMEDEF;
+          }
+                #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
+                  Serial.print((uint32_t) millis());
+                  Serial.println(" Statuszeile schreiben");
+                #endif
+        }
 
+      }
+      if (res > 0)
+      {
+        memset(outTxt, 0, STAT_LINELEN + 1);
+        if (res == 1)
+        {
+          strncpy(outTxt, msg, STAT_LINELEN);
+        }
+        ret = drawStatus(outTxt);
+        minT.startT();              // start timer min time
+        clrT.startT(stayTime);      // start timer max time
+        res = 0;
+      }
+      return (ret || (res != 0));
+    }
+  //
   // ------ private implementation ------------
   bool md_touch::drawScreen()
-  {
-    // Draw keypad background
-    tft.fillRect(0, 0, 240, 320, TFT_DARKGREY);
-    // Draw number display area and frame
-    tft.fillRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_BLACK);
-    tft.drawRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_WHITE);
-    return MDOK;
-  }
+    {
+      // Draw keypad background
+      tft.fillRect(0, 0, 240, 320, TFT_DARKGREY);
+      // Draw number display area and frame
+      tft.fillRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_BLACK);
+      tft.drawRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_WHITE);
+      return MDOK;
+    }
 
   bool md_touch::drawKeypad()
-  {
-    // Draw the keys
-    for (uint8_t col = 0; col < 3; col++)
     {
-      tft.setFreeFont(NORM_FONT);
-      tft.setFreeFont(BOLD_FONT);
+      // Draw the keys
+      for (uint8_t col = 0; col < 3; col++)
+      {
+        tft.setFreeFont(NORM_FONT);
+        tft.setFreeFont(BOLD_FONT);
 
-      key[col].initButton(&tft,
-                        KEY_X + col * (KEY_W + KEY_SPACING_X),
-                        KEY_Y /* + row * (KEY_H + KEY_SPACING_Y)*/, // x, y, w, h, outline, fill, text
-                        KEY_W, KEY_H, TFT_WHITE,
-                        keyColor[col], labelColor[col],
-                        keyLabel[col], KEY_TEXTSIZE);
-      key[col].drawButton();
+        key[col].initButton(&tft,
+                          KEY_X + col * (KEY_W + KEY_SPACING_X),
+                          KEY_Y /* + row * (KEY_H + KEY_SPACING_Y)*/, // x, y, w, h, outline, fill, text
+                          KEY_W, KEY_H, TFT_WHITE,
+                          keyColor[col], labelColor[col],
+                          keyLabel[col], KEY_TEXTSIZE);
+        key[col].drawButton();
+      }
+      return MDOK;
     }
-    return MDOK;
-  }
 
   bool md_touch::drawStatus(char* outStat)
-  {
-    tft.fillRect(STATUS_XLI, STATUS_YOB, STATUS_XRE, STATUS_YUN, STATUS_BCOL);
-    tft.setTextPadding(240);
-    //tft.setCursor(STATUS_X, STATUS_Y);
-    tft.setTextColor(STATUS_FCOL, STATUS_BCOL);
-    tft.setTextDatum(MC_DATUM);
+    {
+      tft.fillRect(STATUS_XLI, STATUS_YOB, STATUS_XRE, STATUS_YUN, STATUS_BCOL);
+      tft.setTextPadding(240);
+      //tft.setCursor(STATUS_X, STATUS_Y);
+      tft.setTextColor(STATUS_FCOL, STATUS_BCOL);
+      tft.setTextDatum(MC_DATUM);
 
-    tft.setTextFont(1);
-    tft.setTextSize(2);
-    tft.drawString(outStat, STATUS_XCENT, STATUS_YCENT);
-    return MDOK;
-}
+      tft.setTextFont(1);
+      tft.setTextSize(2);
+      tft.drawString(outStat, STATUS_XCENT, STATUS_YCENT);
+      return MDOK;
+    }
 
+  //
   // Print something in the mini status bar
   bool md_touch::clearTFT()
-  {
-    tft.fillScreen(DISP_BCOL);
-    return MDOK;
-  }
+    {
+      tft.fillScreen(DISP_BCOL);
+      return MDOK;
+    }
 
   bool md_touch::initTFT(const uint8_t csTFT)
-  {
-    pinMode(csTFT, OUTPUT);
-    digitalWrite(csTFT, LOW);
-    delay(1);  // Initialise the TFT screen
-    tft.init();
-    // Set the rotation before we calibrate
-    tft.setRotation(DISP_ORIENT);
-    // Calibrate the touch screen and retrieve the scaling factors
-    calTouch();
-    // Clear the screen
-    clearTFT();
-    return MDOK;
-  }
+    {
+      pinMode(csTFT, OUTPUT);
+      digitalWrite(csTFT, LOW);
+      delay(1);  // Initialise the TFT screen
+      tft.init();
+      // Set the rotation before we calibrate
+      tft.setRotation(DISP_ORIENT);
+      // Calibrate the touch screen and retrieve the scaling factors
+      calTouch();
+      // Clear the screen
+      clearTFT();
+      return MDOK;
+    }
 
+  //
 #endif
