@@ -36,9 +36,9 @@
     //#define SONG_ALLE_ENTCHEN     2
     #define ANZ_SONGS        1
 
-    void initMusic();
-    bool setSong(int8_t song);
-    void playSong();
+    void md_initMusic();
+    bool md_setSong(int8_t song);
+    void md_playSong();
 
   #endif
 #endif // _MD_BUZZER_H_

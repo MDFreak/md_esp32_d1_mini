@@ -171,6 +171,14 @@ char          outBuf[2*STAT_LINELEN] = "";
           #endif
   }
 #endif // USE_TOUCHSCREEN
+
+#ifdef PLAY_MUSIC
+  void playSong(int8_t songIdx)
+  {
+    while (md_setSong(songIdx) == MDERR);
+    md_playSong();
+  }
+#endif
 // --------------------------------
 
 void setup()
@@ -214,9 +222,12 @@ void setup()
   { // start buzzer (task)
     #ifdef USE_BUZZER
       pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
-      initMusic();
-      while (setSong(SONG_HAENSCHEN_KLEIN) == MDERR);
-      playSong();
+      #ifdef PLAY_MUSIC
+        md_initMusic();
+        #ifdef PLAY_START_MUSIC
+          playSong(SONG_HAENSCHEN_KLEIN);
+        #endif
+      #endif
     #endif
   }
 
