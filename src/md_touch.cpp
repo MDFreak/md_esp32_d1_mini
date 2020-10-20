@@ -1,18 +1,11 @@
 #include "md_touch.h"
 
 #ifdef USE_TOUCHSCREEN
+
   TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 
-  // This is the file name used to store the calibration data
-    // You can change this to create new calibration files.
-    // The SPIFFS file name must start with "/".
-  #define CALIBRATION_FILE "/TouchCalData1"
-
-  // Set REPEAT_CAL to true instead of false to run calibration
-    // again, otherwise it will only be done once.
-    // Repeat calibration if you change the screen rotation.
-  #define REPEAT_CAL false
-
+  #define CALIBRATION_FILE "/TouchCalData1" // internal flash drive
+  #define REPEAT_CAL false // Set to run calibration every startup
   // Keypad start position, key sizes and spacing
   char numberBuffer[KEY_NUM_LEN + 1] = "";
   uint8_t numberIndex = 0;
@@ -31,15 +24,15 @@
           #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
             Serial.println("md_touch::startTouch .. initTFT .."); delay(100);
           #endif
-      initTFT(TFT_BL);
+      _initTFT(TFT_BL);
           #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
             Serial.println(".. clearTFT .."); delay(100);
           #endif
-      clearTFT();
+      _clearTFT();
           #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
             Serial.println(".. drawKeypad .."); delay(100);
           #endif
-      drawKeypad();
+      _drawKeypad();
           #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
             Serial.println(".. wrstatus .."); delay(100);
           #endif
@@ -142,105 +135,100 @@
       return MDOK;
     }
 
-  bool md_touch::runTouch(char* pStatus)
+  void md_touch::runTouch(char* pStatus)
     {
-      return false;
-      #ifdef DUMMY
         uint16_t t_x = 0, t_y = 0; // To store the touch coordinates
+        boolean pressed = false;
 
-        // Pressed will be set true is there is a valid touch on the screen
-        boolean pressed = tft.getTouch(&t_x, &t_y);
+        // touch lesen
+        if (pressed = tft.getTouch(&t_x, &t_y))
+            {
+              if (!isAct)
+                {
+                  sprintf(outTxt," x%d, y%d", t_x, t_y);
+                  Serial.println(outTxt);
+                  wrTouch(outTxt, 0, 3);
+                  wrTouch("", 0, 4);
+                  SET(isAct);
+                }
+            }
+          else
+            {
+              if (isAct)
+                {
+                  Serial.println(" released ");
+                  wrTouch("", 0, 3);
+                  RESET(isAct);
+                }
+            }
 
         // / Check if any key coordinate boxes contain the touch coordinates
-        for (uint8_t b = 0; b < 15; b++)
-        {
-          if (pressed && key[b].contains(t_x, t_y))
+        for (uint8_t b = 0; b < KEY_NUM_LEN; b++)
           {
-            key[b].press(true);  // tell the button it is pressed
+            if (pressed && key[b].contains(t_x, t_y))
+                {
+                  key[b].press(true);  // tell the button it is pressed
+                }
+              else
+                {
+                  key[b].press(false);  // tell the button it is NOT pressed
+                }
           }
-          else
-          {
-            key[b].press(false);  // tell the button it is NOT pressed
-          }
-        }
 
         // Check if any key has changed state
-        for (uint8_t b = 0; b < 15; b++)
-        {
-          if (b < 3)
+        for (uint8_t b = 0; b < KEY_NUM_LEN; b++)
           {
-            tft.setFreeFont(NORM_FONT);
-          }
-          else
-          {
-            tft.setFreeFont(BOLD_FONT);
-          }
-
-          if (key[b].justReleased())
-          {
-            key[b].drawButton();     // draw normal
-          }
-
-          if (key[b].justPressed())
-          {
-            key[b].drawButton(true);  // draw invert
-
-            // if a numberpad button, append the relevant # to the numberBuffer
-            if (b >= 3)
-            {
-              if (numberIndex < NUM_LEN)
+            // set caption font
+            if (b < 2)
               {
-                numberBuffer[numberIndex] = keyLabel[b][0];
-                numberIndex++;
-                numberBuffer[numberIndex] = 0; // zero terminate
+                //tft.setFreeFont(NORM_FONT);
+                tft.setFreeFont(BOLD_FONT);
               }
-              status(""); // Clear the old status
-            }
-
-            // Del button, so delete last char
-            if (b == 1)
-            {
-              numberBuffer[numberIndex] = 0;
-              if (numberIndex > 0)
+              else
               {
-                numberIndex--;
-                numberBuffer[numberIndex] = 0;//' ';
+                tft.setFreeFont(BOLD_FONT);
               }
-              status(""); // Clear the old status
-            }
 
-            if (b == 2)
-            {
-              status("Sent value to serial port");
-              Serial.println(numberBuffer);
-            }
-            // we dont really check that the text field makes sense
-            // just try to call
-            if (b == 0)
-            {
-              status("Value cleared");
-              numberIndex = 0; // Reset index to 0
-              numberBuffer[numberIndex] = 0; // Place null in buffer
-            }
 
-            // Update the number display field
-            tft.setTextDatum(TL_DATUM);        // Use top left corner as text coord datum
-            tft.setFreeFont(&FreeSans18pt7b);  // Choose a nicefont that fits box
-            tft.setTextColor(DISP_TCOLOR);     // Set the font colour
 
-            // Draw the string, the value returned is the width in pixels
-            int xwidth = tft.drawString(numberBuffer, DISP_X + 4, DISP_Y + 12);
+            // check and handle state
+            if (key[b].justReleased())
+              {
+                key[b].drawButton();     // draw normal
+              }
 
-            // Now cover up the rest of the line up by drawing a black rectangle.  No flicker this way
-            // but it will not work with italic or oblique fonts due to character overlap.
-            tft.fillRect(DISP_X + 4 + xwidth, DISP_Y + 1, DISP_W - xwidth - 5, DISP_H - 2, TFT_BLACK);
+            if (key[b].justPressed())
+              {
+                key[b].drawButton(true);  // draw invert
+                switch (b)
+                  {
+                    case 0:
+                      Serial.println("key 1 pressed");
+                      wrTouch(" key 1", 4, 4);
+                      break;
+                    case 1:
+                      wrTouch(" key 2", 4, 4);
+                      Serial.println("key 2 pressed");
+                      break;
+                    case 2:
+                      wrTouch(" key 3", 4, 4);
+                      Serial.println("key 3 pressed");
+                      break;
+                    default:
+                        break;
+                  }
 
-            delay(10); // UI debouncing
+                // Draw the string, the value returned is the width in pixels
+                // int xwidth = tft.drawString(numberBuffer, DISP_X + 4, DISP_Y + 12);
+
+                // Now cover up the rest of the line up by drawing a black rectangle.  No flicker this way
+                // but it will not work with italic or oblique fonts due to character overlap.
+                // tft.fillRect(DISP_X + 4 + xwidth, DISP_Y + 1, DISP_W - xwidth - 5, DISP_H - 2, TFT_BLACK);
+
+                usleep(10000); // UI debouncing
+              }
           }
-        }
-        pStatus =  pStatus;  // no warning
-        return false;
-      #endif
+//        pStatus =  pStatus;  // no warning
     }
 
   bool md_touch::wrStatus() // write status line
@@ -296,7 +284,7 @@
         {
           strncpy(outTxt, msg, STAT_LINELEN);
         }
-        ret = drawStatus(outTxt);
+        ret = _drawStatus(outTxt);
         minT.startT();              // start timer min time
         clrT.startT(stayTime);      // start timer max time
         res = 0;
@@ -305,7 +293,7 @@
     }
   //
   // ------ private implementation ------------
-  bool md_touch::drawScreen()
+  bool md_touch::_drawScreen()
     {
       // Draw keypad background
       tft.fillRect(0, 0, 240, 320, TFT_DARKGREY);
@@ -315,7 +303,7 @@
       return MDOK;
     }
 
-  bool md_touch::drawKeypad()
+  bool md_touch::_drawKeypad()
     {
       // Draw the keys
       for (uint8_t col = 0; col < 3; col++)
@@ -334,7 +322,7 @@
       return MDOK;
     }
 
-  bool md_touch::drawStatus(char* outStat)
+  bool md_touch::_drawStatus(char* outStat)
     {
       tft.fillRect(STATUS_XLI, STATUS_YOB, STATUS_XRE, STATUS_YUN, STATUS_BCOL);
       tft.setTextPadding(240);
@@ -350,13 +338,13 @@
 
   //
   // Print something in the mini status bar
-  bool md_touch::clearTFT()
+  bool md_touch::_clearTFT()
     {
       tft.fillScreen(DISP_BCOL);
       return MDOK;
     }
 
-  bool md_touch::initTFT(const uint8_t csTFT)
+  bool md_touch::_initTFT(const uint8_t csTFT)
     {
       pinMode(csTFT, OUTPUT);
       digitalWrite(csTFT, LOW);
@@ -367,7 +355,7 @@
       // Calibrate the touch screen and retrieve the scaling factors
       calTouch();
       // Clear the screen
-      clearTFT();
+      _clearTFT();
       return MDOK;
     }
 

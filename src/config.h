@@ -4,7 +4,9 @@
   #include "prj_config.h"
 
   // --- debugging
-  #define DEBUG_MODE       CFG_DEBUG_STARTUP /* CFG_DEBUG_ACTIONS /  CFG_DEBUG_DETAILS */
+  #define DEBUG_MODE      CFG_DEBUG_STARTUP
+  //#define DEBUG_MODE      CFG_DEBUG_ACTIONS
+  //#define DEBUG_MODE      CFG_DEBUG_DETAILS
 
   // ------ SW-Konfigurationen ------------------------
 
