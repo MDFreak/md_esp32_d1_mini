@@ -8,16 +8,32 @@
   #include "config.h"
   #include "md_util.h"
 
-  #ifdef USE_TOUCHSCREEN
-    #include "md_touch.h"
-  #endif // USE_TOUCHSCREEN
+  // --- user interface
+    #ifdef USE_TOUCHSCREEN
+      #include "md_touch.h"
+    #endif // USE_TOUCHSCREEN
 
-  #ifdef USE_WIFI
-    #include "md_webserver.h"
-  #endif
+    #ifdef USE_BUZZER
+      #include "md_buzzer.h"
+    #endif // USE_BUZZER
 
-  #ifdef USE_BUZZER
-    #include "md_buzzer.h"
-  #endif
+    #ifdef USE_OLED
+      #include "md_oled.h"
+    #endif // USE_OLED
+
+    #ifdef USE_KEYPADSHIELD
+      #include "md_keypadshield.h"
+    #endif // USE_KEYPADSHIELD
+
+    #ifdef USE_TFT1602_GPIO
+      #include "md_lcd.h"
+    #endif
+  //
+  // --- network
+    #ifdef USE_WIFI
+      #include "md_webserver.h"
+    #endif
+  //
+  // -------------------------
 
 #endif // MAIN_H

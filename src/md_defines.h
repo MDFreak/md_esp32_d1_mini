@@ -10,17 +10,23 @@
       #define OFF  0  // not active
       #define ON   1  // active
 
+      #define CR   13 // carrige return
+      #define LF   10 // line feed
+      #define LN   LF
     //
     // --- macros
-      #define SET(b)   (b = true)
-      #define RESET(b) (b = false)
+      #define SET(b)    (b = true)
+      #define RESET(b)  (b = false)
+
+      #define SOUT(c)   (Serial.print(c))
+      #define SOUTLN(c) (Serial.println(c))
 
     //
     // --- boards
-      #define BRD_NN                NN
-      #define BRD_ESP32S_NodeMCU_AZ 1
-      #define BRD_ARD_NANO_V3_AZ    2
-
+      #define  BRD_NN                0
+      #define  BRD_ESP32S_NodeMCU_AZ 1
+      #define  BRD_ESP32_D1_R32_AZ   2
+      #define  BRD_ARD_NANO_V3_AZ    3
     //
     // --- assemblies
       #define ASS_NN                NN

@@ -235,11 +235,11 @@
     {
       return wrStatus("");
     }
-    bool md_touch::wrStatus(const char *msg)
+  bool md_touch::wrStatus(const char *msg)
     {
       return wrStatus(msg,STAT_TIMEDEF);
     }
-    bool md_touch::wrStatus(const char *msg, uint32_t stayTime)
+  bool md_touch::wrStatus(const char *msg, uint32_t stayTime)
     {
       //unsigned long diffTime = millis() - statWrTime;
       int8_t res = 0; // -1:wait, 0:ok, 1:write , 2:clear

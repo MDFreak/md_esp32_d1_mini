@@ -19,6 +19,11 @@
                                #endif
                                ;
     #endif
+
+    msTimer       dispT      = msTimer(DISP_CYCLE);
+    uint32_t      ze         = 1;      // aktuelle Schreibzeile
+    char          outBuf[2*STAT_LINELEN] = "";
+
   //
   // ------ network ----------------------
     #ifdef USE_WIFI
@@ -37,15 +42,73 @@
 
   //
   // ------ user interface ---------------
-    md_touch      touch      = md_touch();
-    msTimer       dispT      = msTimer(DISP_CYCLE);
-    uint32_t      ze         = 1;      // aktuelle Schreibzeile
-    char          outBuf[2*STAT_LINELEN] = "";
-  //
-  // ------ speaker ---------------
-    md_buzzer     buzz       = md_buzzer();
+    #ifdef USE_TOUCHSCREEN
+      md_touch touch = md_touch();
+    #endif
+
+    #ifdef USE_KEYPADSHIELD
+      md_kpad kpad = md_kpad();
+    #endif // USE_KEYPADSHIELD
+
+    #ifdef USE_BUZZER
+      md_buzzer     buzz       = md_buzzer();
+    #endif // USE_BUZZER
+
+    #ifdef USE_OLED
+      md_oled oled = md_oled();
+      //      msTimer     oledT      = msTimer(DISP_CYCLE);
+      uint8_t oledIdx = 0;
+    #endif //USE_OLED
+
+    #ifdef USE_TFT1602_GPIO
+      LiquidCrystal  lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+      void*          plcd = (void*) &lcd;
+    #endif
 //
 // --- private prototypes
+  //
+  // ------ user interface -----------------
+    //
+    // --- display
+      //
+      // --- TFT/LCD
+        void startTFT()
+        {
+          #ifdef USE_DISPLAY
+            #ifdef USE_TFT1602_GPIO
+              lcd_start(plcd);
+            #endif
+          #endif
+        }
+      //
+      // standard outputs
+      void dispStatus(const char* msg, bool wait = true)
+        {
+          #if defined(USE_TOUCHSCREEN)
+            touch.wrStatus(msg);  // trigger status for deleting
+          #elif defined(USE_OLED)
+            oled.wrStatus(msg);
+                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                    SOUT("  md_error="); SOUTLN(md_error);
+                  #endif
+          #endif
+        }
+    //
+    // --- user input
+      #ifdef USE_TOUCHSCREEN
+        void startTouch()
+          {
+            bool ret = touch.startTouch();
+                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                    Serial.print("startTouch ret="); Serial.print(ret);
+                  #endif
+            md_error = setBit(md_error, ERRBIT_TOUCH, ret);
+                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                    Serial.print("  md_error="); Serial.println(md_error);
+                  #endif
+          }
+      #endif // USE_TOUCHSCREEN
+
   // ------ NTP server -------------------
     #ifdef USE_NTP_SERVER
       void initNTPTime()
@@ -58,14 +121,22 @@
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                   Serial.print("  md_error="); Serial.println(md_error);
                 #endif
-          #ifdef USE_TOUCHSCREEN
+          #if (defined(USE_TOUCHSCREEN) || defined(USE_OLED))
             if ((md_error & ERRBIT_WIFI) == 0)
             {
-              while (touch.wrStatus("NTPTime ok"));
+              #if defined(USE_TOUCHSCREEN)
+                while (touch.wrStatus("NTPTime ok"));
+              #elif defined(USE_OLED)
+                while (oled.wrStatus("NTPTime ok"));
+              #endif
             }
             else
             {
-              while (touch.wrStatus("NTPTime error"));
+              #if defined(USE_TOUCHSCREEN)
+                while (touch.wrStatus("NTPTime error"));
+              #elif defined(USE_OLED)
+                while (oled.wrStatus("NTPTime error"));
+              #endif
             }
             #endif
         }
@@ -160,21 +231,7 @@
           }
         }
     #endif // USE_WEBSERVER
-  //
-  // ------ touchscreen -----------------
-    #ifdef USE_TOUCHSCREEN
-      void startTouch()
-        {
-          bool ret = touch.startTouch();
-                #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                  Serial.print("startTouch ret="); Serial.print(ret);
-                #endif
-          md_error = setBit(md_error, ERRBIT_TOUCH, ret);
-                #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                  Serial.print("  md_error="); Serial.println(md_error);
-                #endif
-        }
-    #endif // USE_TOUCHSCREEN
+
   //
   // ------ passive buzzer --------------
     #ifdef PLAY_MUSIC
@@ -191,59 +248,81 @@
       void playSong() { playSong(0); }
 
     #endif
+
 //
 // --- system startup
 void setup()
   {
-    // start system
-      Serial.begin(SER_BAUDRATE);
+    // --- system
+      // start system
+        Serial.begin(SER_BAUDRATE);
 
-      // init project
-          #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
-            Serial.println(); Serial.println("setup start ...");
+        // init project
+            #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+              Serial.println(); Serial.println("setup start ...");
+            #endif
+
+    //
+    // --- user interface
+      // start display
+        // start touch
+          #ifdef USE_TOUCHSCREEN
+            startTouch();
+            if ((md_error & ERRBIT_TOUCH) == 0 )
+            {
+              touch.wrTouch(PROJ_TITLE, 0, 1);
+              while (touch.wrStatus("setup start ..."));
+            }
+          #endif // USE_TOUCHSCREEN
+
+        //
+        // init keypad
+          #ifdef USE_KEYPADSHIELD
+            kpad.init(KEYS_ADC);
+          #endif // USE_KEYPADSHIELD
+        //
+        // start OLED display
+          #ifdef USE_OLED
+            oled.begin();
+            while (oled.wrStatus("setup start ..."));
+          #endif // USE_OLED
+
+        //
+        // start TFT1602
+          #ifdef USE_TFT1602_IO
+            startTFT(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
           #endif
-
-    //
-    // start touch
-      #ifdef USE_TOUCHSCREEN
-        startTouch();
-        if ((md_error & ERRBIT_TOUCH) == 0 )
-        {
-          touch.wrTouch(PROJ_TITLE, 0, 1);
-          while (touch.wrStatus("setup start ..."));
-        }
-      #endif // USE_TOUCHSCREEN
-
-    //
-    // start WIFI
-      #ifdef USE_WIFI
-        startWIFI();
-              #ifdef USE_TOUCHSCREEN
-                if ((md_error & ERRBIT_WIFI) == 0)
-                {
-                  while (touch.wrStatus("WIFI connected"));
-                }
-                else
-                {
-                  while (touch.wrStatus("WIFI error"));
-                }
-              #endif
-      #endif // USE_WIFI
-
-    //
-    // start buzzer (task)
-      #ifdef USE_BUZZER
-        pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
-        #ifdef PLAY_MUSIC
-          buzz.initMusic();
-          #ifdef PLAY_START_MUSIC
-            playSong();
+      //
+      // start buzzer (task)
+        #ifdef USE_BUZZER
+          pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
+          #ifdef PLAY_MUSIC
+            buzz.initMusic();
+            #ifdef PLAY_START_MUSIC
+              playSong();
+            #endif
           #endif
         #endif
-      #endif
 
     //
-    // finish setup
+    // --- network
+      // start WIFI
+        #ifdef USE_WIFI
+          startWIFI();
+                #ifdef USE_TOUCHSCREEN
+                  if ((md_error & ERRBIT_WIFI) == 0)
+                  {
+                    while (touch.wrStatus("WIFI connected"));
+                  }
+                  else
+                  {
+                    while (touch.wrStatus("WIFI error"));
+                  }
+                #endif
+        #endif // USE_WIFI
+
+    //
+    // --- finish setup
           #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
             Serial.println();
             Serial.print("... end setup -- error="); Serial.println(md_error);
@@ -266,6 +345,7 @@ void loop()
           if((md_error & ERRBIT_WIFI) > 0)
           {
             Serial.println("WiFi startWIFI");
+                      dispStatus("WiFi startWIFI");
             startWIFI();
           }
         }
@@ -310,9 +390,13 @@ void loop()
                   Serial.print("Datum "); Serial.print(day()); Serial.print("."); Serial.print(month()); Serial.print("."); Serial.print(year()); Serial.print(" ");
                   Serial.print("Zeit "); Serial.print(hour()); Serial.print("."); Serial.print(minute()); Serial.print(":"); Serial.println(second());
                 #endif
-          #ifdef USE_TOUCHSCREEN
+          #ifdef USE_DISPLAY
             sprintf(outBuf,"  %02d.%02d. %02d:%02d:%02d", day(), month(), hour(), minute(), second());
-            touch.wrTouch(outBuf, 0, DATE_DISP_LINE);
+              #if (defined(USE_TOUCHSCREEN))
+                touch.wrTouch(outBuf, 0, DATE_DISP_LINE);
+              #elif (defined(USE_OLED))
+                oled.wrText(outBuf, 0, DATE_DISP_LINE);
+              #endif
           #endif
         }
       #endif // USE_NTP_SERVER
@@ -337,14 +421,54 @@ void loop()
     // run Touchpad
       #ifdef USE_TOUCHSCREEN
         touch.runTouch(outBuf);
-        if (dispT.TOut())    // handle touch output
-        {
-          dispT.startT();
-          touch.wrStatus();  // trigger status for deleting
-        }
       #endif // USE_TOUCHSCREEN
     //
+    // run display
+      #ifdef USE_DISPLAY
+        if (dispT.TOut())    // handle touch output
+          {
+            dispT.startT();
+              #ifdef RUN_OLED_TEST
+                oled.clearBuffer();
+                switch (oledIdx)
+                  {
+                    case 0:
+                      oled.prepare();
+                      oled.box_frame();
+                      break;
+                    case 1:
+                      oled.disc_circle();
+                      oled.sendBuffer();
+                      break;
+                    case 2:
+                      oled.r_frame_box();
+                      break;
+                    case 3:
+                      oled.prepare();
+                      oled.string_orientation();
+                      oledIdx--;
+                      break;
+                    case 4:
+                      oled.line();
+                      break;
+                    case 5:
+                      oled.triangle();
+                      break;
+                    case 6:
+                      oled.bitmap();
+                      break;
+                    default:
+                      break;
+                  }
+                if (++oledIdx > 6) { oledIdx = 0; }
+                oled.sendBuffer();
+              #else
+                dispStatus("disp Status");
+              #endif
+          }
 
+      #endif // USE_OLED
+    //
     sleep(1);
   }
 // --- end of implementation

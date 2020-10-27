@@ -4,8 +4,8 @@
   #include "prj_config.h"
 
   // --- debugging
-  #define DEBUG_MODE      CFG_DEBUG_STARTUP
-  //#define DEBUG_MODE      CFG_DEBUG_ACTIONS
+  //#define DEBUG_MODE      CFG_DEBUG_STARTUP
+  #define DEBUG_MODE      CFG_DEBUG_ACTIONS
   //#define DEBUG_MODE      CFG_DEBUG_DETAILS
 
   // ------ SW-Konfigurationen ------------------------
@@ -53,8 +53,11 @@
     #define LOGIN_MAMD      0           // WLAN Moosgrabenstrasse 26
     #define LOGIN_HM        1           // WLAN Am Jungberg 9
     #define WIFI_MAMD_SSID  "MAMD-HomeG"
+    #define WIFI_MAMD_PW    "ElaNanniRalf3"
     #define WIFI_HM_SSID    "HS-HomeG"
-    #define WIFI_PW         "ElaNanniRalf3"
+    #define WIFI_HM_PW      "ElaNanniRalf3"
+    #define WIFI_WL_SSID    "FairHandeln"
+    #define WIFI_WL_PW      "WL&Fair2Live#"
     #define WIFI_CONN_DELAY 500000ul // Scan-Abstand [us]
     #define WIFI_CONN_REP   5        // Anzahle der Connect-Schleifen
     #define WIFI_CONN_CYCLE 4000ul   // Intervallzeit fuer Recoonect [us]

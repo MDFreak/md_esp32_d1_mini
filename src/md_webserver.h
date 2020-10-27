@@ -25,6 +25,7 @@
       IPAddress _subnet;
       IPAddress _locip;
       char*     _ssid;
+      char*     _passw;
       bool      _isinit;
 
   };

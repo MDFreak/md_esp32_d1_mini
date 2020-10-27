@@ -2,10 +2,13 @@
 
 // --- declaration
   // --- WIFI ---------------------------
-    const char* ssidMAMD = WIFI_MAMD_SSID;
-    const char* ssidHM   = WIFI_HM_SSID;
-    const char* nossid   = NULL;
-    const char* password = WIFI_PW;
+    const char* ssidMAMD  = WIFI_MAMD_SSID;
+    const char* ssidHM    = WIFI_HM_SSID;
+    const char* ssidWL    = WIFI_WL_SSID;
+    const char* nossid    = NULL;
+    const char* passwMAMD = WIFI_MAMD_PW;
+    const char* passwHM   = WIFI_HM_PW;
+    const char* passwWL   = WIFI_WL_PW;
 
     md_wifi   wifiMD  = md_wifi();
 
@@ -286,12 +289,20 @@
                     Serial.print(i + 1);
             if (WiFi.SSID(i) == ssidHM)
             {
-              _ssid = (char*) ssidHM;
+              _ssid  = (char*) ssidHM;
+              _passw = (char*) passwHM;
                       Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
             }
             else if (WiFi.SSID(i) == ssidMAMD)
             {
-              _ssid = (char*) ssidMAMD;
+              _ssid  = (char*) ssidMAMD;
+              _passw = (char*) passwMAMD;
+                      Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
+            }
+            else if (WiFi.SSID(i) == ssidWL)
+            {
+              _ssid  = (char*) ssidWL;
+              _passw = (char*) passwWL;
                       Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
             }
             else
@@ -330,7 +341,7 @@
           return MDERR;
         }
 
-        WiFi.begin(_ssid, password); // start connection
+        WiFi.begin(_ssid, _passw); // start connection
         Serial.println(""); Serial.println(millis());
 
         // Wait for connection
