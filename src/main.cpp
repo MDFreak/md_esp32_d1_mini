@@ -20,11 +20,15 @@
                                ;
     #endif
 
-    msTimer       dispT      = msTimer(DISP_CYCLE);
-    uint32_t      ze         = 1;      // aktuelle Schreibzeile
-    char          outBuf[2*STAT_LINELEN] = "";
-
-  //
+    msTimer       dispT  = msTimer(DISP_CYCLE);
+    uint32_t      ze     = 1;      // aktuelle Schreibzeile
+    char          outBuf[STAT_LINELEN + 1] = "";
+    #ifdef USE_STATUS
+      msTimer     statT  = msTimer(STAT_TIMEDEF);
+      char        statOut[STAT_LINELEN + 1] = "";
+      bool        statOn = false;
+      //char        timeOut[STAT_LINELEN + 1] = "";
+      #endif
   // ------ network ----------------------
     #ifdef USE_WIFI
       msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
@@ -40,75 +44,145 @@
       bool    ntpGet  = true;
       #endif // USE_WEBSERVER
 
-  //
   // ------ user interface ---------------
     #ifdef USE_TOUCHSCREEN
-      md_touch touch = md_touch();
-    #endif
+        md_touch touch = md_touch();
+      #endif
 
     #ifdef USE_KEYPADSHIELD
-      md_kpad kpad = md_kpad();
-    #endif // USE_KEYPADSHIELD
+        md_kpad kpad(KEYS_ADC);
+        uint8_t key;
+      #endif // USE_KEYPADSHIELD
 
     #ifdef USE_BUZZER
-      md_buzzer     buzz       = md_buzzer();
-    #endif // USE_BUZZER
+        md_buzzer     buzz       = md_buzzer();
+      #endif // USE_BUZZER
 
     #ifdef USE_OLED
-      md_oled oled = md_oled();
-      //      msTimer     oledT      = msTimer(DISP_CYCLE);
-      uint8_t oledIdx = 0;
-    #endif //USE_OLED
+        md_oled oled = md_oled();
+        //      msTimer     oledT      = msTimer(DISP_CYCLE);
+        uint8_t oledIdx = 0;
+      #endif //USE_OLED
 
-    #ifdef USE_TFT1602_GPIO
-      LiquidCrystal  lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
-      void*          plcd = (void*) &lcd;
-    #endif
-//
+    #if (defined(USE_TFT1602_GPIO_RO_3V3) || defined(USE_TFT1602_GPIO_RO_3V3))
+        LiquidCrystal  lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+        void*          plcd = (void*) &lcd;
+        md_lcd         mlcd(plcd);
+      #endif
 // --- private prototypes
-  //
   // ------ user interface -----------------
-    //
-    // --- display
-      //
-      // --- TFT/LCD
-        void startTFT()
-        {
-          #ifdef USE_DISPLAY
-            #ifdef USE_TFT1602_GPIO
-              lcd_start(plcd);
-            #endif
-          #endif
-        }
-      //
+    // --- user output
       // standard outputs
-      void dispStatus(const char* msg, bool wait = true)
-        {
-          #if defined(USE_TOUCHSCREEN)
-            touch.wrStatus(msg);  // trigger status for deleting
-          #elif defined(USE_OLED)
-            oled.wrStatus(msg);
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    SOUT("  md_error="); SOUTLN(md_error);
-                  #endif
-          #endif
-        }
-    //
-    // --- user input
-      #ifdef USE_TOUCHSCREEN
-        void startTouch()
+        void dispStatus(const char* msg)
           {
-            bool ret = touch.startTouch();
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    Serial.print("startTouch ret="); Serial.print(ret);
-                  #endif
-            md_error = setBit(md_error, ERRBIT_TOUCH, ret);
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    Serial.print("  md_error="); Serial.println(md_error);
-                  #endif
-          }
-      #endif // USE_TOUCHSCREEN
+            #ifdef USE_STATUS
+              size_t statLen = strlen(msg);
+              bool   doIt    = false;
 
+              memset(statOut, ' ', STAT_LINELEN);
+              if (statLen)
+                {
+                  if ( statLen > STAT_LINELEN)
+                    statLen = STAT_LINELEN;
+                  memcpy(statOut, msg, statLen);
+                  statOn = true;
+                  statT.startT();
+                  doIt = true;    // output statOut
+                  statT.startT();
+                }
+              else // empty input
+                if (statOn && statT.TOut())
+                  statOn = false;
+
+              if (!statOn) // disp actual time
+                {
+                  sprintf(statOut,"%02d.%02d. %02d:%02d:%02d ", day(), month(), hour(), minute(), second());
+                  doIt = true;
+                }
+              if (doIt)
+                {
+                  #if defined(USE_TOUCHXPT2046_AZ_3V3)
+                    touch.wrStatus(msg);
+                    #endif
+                  #if defined(USE_OLED)
+                    oled.wrStatus(msg);
+                          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                            SOUT("  md_error="); SOUTLN(md_error);
+                          #endif
+                    #endif
+                  #if defined(USE_TFT)
+                    mlcd.wrStatus((char*) statOut);
+                          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                            SOUT("  md_error="); SOUTLN(md_error);
+                          #endif
+                    #endif // USE_DISP
+                }
+              #endif // USE_STATUS
+          }
+
+        void dispText(char* msg, uint8_t row, uint8_t col)
+          {
+            #ifdef USE_DISP
+                #if (defined(USE_TOUCHXPT2046_AZ_3V3))
+                  touch.wrTouch(msg, col, row);
+                  #endif
+                #if defined(USE_OLED)
+                  oled.wrText(msg, col, row);
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                          SOUT("  md_error="); SOUTLN(md_error);
+                        #endif
+                  #endif
+                #if defined(USE_TFT)
+                  mlcd.wrText(msg, row, col);
+                  #endif
+              #endif
+          }
+
+        void dispText(char* msg)
+          {
+            dispText(msg, 0, 0);
+          }
+
+      // --- start display
+        void startDisp()
+          {
+            #ifdef USE_DISP
+              #ifdef USE_STATUS
+                statOut[STAT_LINELEN] = 0;  // limit strlen
+                #endif
+              #if defined(USE_TFT)
+                mlcd.start(plcd);
+                #endif
+              #if defined(USE_TOUCHXPT2046_AZ_3V3)
+                bool ret = touch.startTouch();
+                      #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                        SOUT("startTouch ret="); SOUT(ret);
+                      #endif
+                md_error = setBit(md_error, ERRBIT_TOUCH, ret);
+                      #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                        SOUT("  md_error="); SOUTLN(md_error);
+                      #endif
+                #endif
+              #if defined (USE_OLED)
+                  oled.begin();
+                #endif
+              #endif
+          }
+    // --- user input
+      // --- keypad
+        void startKeys()
+          {
+            #if defined(USE_KEYPADSHIELD)
+                kpad.init(KEYS_ADC);
+              #endif // USE_KEYPADSHIELD
+          }
+
+        uint8_t getKey()
+          {
+            #if defined(USE_KEYPADSHIELD)
+                return kpad.getKey();
+              #endif // USE_KEYPADSHIELD
+          }
   // ------ NTP server -------------------
     #ifdef USE_NTP_SERVER
       void initNTPTime()
@@ -121,27 +195,17 @@
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                   Serial.print("  md_error="); Serial.println(md_error);
                 #endif
-          #if (defined(USE_TOUCHSCREEN) || defined(USE_OLED))
-            if ((md_error & ERRBIT_WIFI) == 0)
+          if ((md_error & ERRBIT_WIFI) == 0)
             {
-              #if defined(USE_TOUCHSCREEN)
-                while (touch.wrStatus("NTPTime ok"));
-              #elif defined(USE_OLED)
-                while (oled.wrStatus("NTPTime ok"));
-              #endif
+              dispStatus("NTPTime ok");
             }
             else
             {
-              #if defined(USE_TOUCHSCREEN)
-                while (touch.wrStatus("NTPTime error"));
-              #elif defined(USE_OLED)
-                while (oled.wrStatus("NTPTime error"));
-              #endif
+              dispStatus("NTPTime error");
             }
-            #endif
         }
-    #endif // USE_NTP_SERVER
-  //
+      #endif // USE_NTP_SERVER
+
   // ------ WIFI -------------------------
     #ifdef USE_WIFI
       void startWIFI()
@@ -152,87 +216,71 @@
           wifiMD.setLocIP();
           bool ret = wifiMD.md_initWIFI();
                   #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    Serial.print(millis());
-                    Serial.print(" initWIFI ret="); Serial.println(ret);
+                    SOUT(millis()); SOUT(" initWIFI ret="); SOUTLN(ret);
                   #endif
           if (ret == MDOK)
           {
             ret = wifiMD.md_scanWIFI();
                   #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    Serial.print(millis());
-                    Serial.print(" scanWIFI ret="); Serial.println(ret);
+                    SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
                   #endif
           }
           if (ret == MDOK)
           {
             ret = wifiMD.md_startWIFI();
                   #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    Serial.print("startWIFI ret="); Serial.print(ret);
-                  #endif
+                    SOUT("startWIFI ret="); SOUT(ret);
+                    #endif
           }
           md_error = setBit(md_error, ERRBIT_WIFI, ret);
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                  Serial.print("  md_error="); Serial.println(md_error);
+                  SOUT("  md_error="); SOUTLN(md_error);
                   #endif
 
-          #ifdef USE_TOUCHSCREEN
-            if ((md_error & ERRBIT_WIFI) == 0)
-            {
-              while (touch.wrStatus("WIFI connected"));
-            }
+          if ((md_error & ERRBIT_WIFI) == 0)
+              dispStatus("WIFI connected");
             else
-            {
-              while (touch.wrStatus("WIFI error"));
-            }
-            #endif
+              dispStatus("WIFI error");
           #ifdef USE_NTP_SERVER
             if((md_error & ERRBIT_WIFI) == 0) // WiFi ok
-            {
-              if((md_error & ERRBIT_NTPTIME) != 0) // WiFi ok
-              {
-                initNTPTime();
-              }
-            }
+                if((md_error & ERRBIT_NTPTIME) != 0) // WiFi ok
+                  initNTPTime();
             #endif
         }
-    #endif // USE_WIFI
+      #endif // USE_WIFI
 
     #ifdef USE_WEBSERVER
       void startWebServer()
         {
           bool ret = MDERR;
           if ((md_error & ERRBIT_SERVER) != 0)
-          {
-            #ifdef USE_TOUCHSCREEN
-              while (touch.wrStatus("start webserver"));
-            #endif
-            if ((md_error & ERRBIT_WIFI) == 0)
             {
-              ret = webMD.md_startServer();
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-        //              Serial.print("startServer ret="); Serial.print(ret);
-                  #endif
-            }
-            md_error = setBit(md_error, ERRBIT_SERVER, ret);
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-        //            Serial.print("  md_error="); Serial.println(md_error);
-                  #endif
+              dispStatus("start webserver");
+              if ((md_error & ERRBIT_WIFI) == 0)
+                {
+                  ret = webMD.md_startServer();
+                      #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                        // SOUT("startServer ret="); SOUT(ret);
+                      #endif
+                }
+              md_error = setBit(md_error, ERRBIT_SERVER, ret);
+                    #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                      // SOUT("  md_error="); SOUTLN(md_error);
+                    #endif
 
-            #ifdef USE_TOUCHSCREEN
               if ((md_error & ERRBIT_SERVER) == 0)
-              {
-                while (touch.wrStatus("Webserver online"));
-              }
-              else
-              {
-                while (touch.wrStatus("Webserver error"));
-              }
-            #endif
-          }
+                {
+                  dispStatus("Webserver online");
+                }
+                else
+                {
+                  dispStatus("Webserver error");
+                }
+            }
         }
-    #endif // USE_WEBSERVER
+      #endif // USE_WEBSERVER
 
-  //
+
   // ------ passive buzzer --------------
     #ifdef PLAY_MUSIC
       tone_t test = {0,0,0};
@@ -249,182 +297,136 @@
 
     #endif
 
-//
+
 // --- system startup
-void setup()
-  {
-    // --- system
-      // start system
-        Serial.begin(SER_BAUDRATE);
-
-        // init project
-            #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
-              Serial.println(); Serial.println("setup start ...");
+  void setup()
+    {
+      // --- system
+        // start system
+          Serial.begin(SER_BAUDRATE);
+              #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+                SOUTLN(); SOUTLN("setup start ...");
+              #endif
+          #ifdef SCAN_IIC
+            scanIIC(1, I2C1_SDA, I2C1_SCL);
+            sleep(5);
+            #ifdef SDA2
+              scanIIC(2, I2C2_SDA, I2C2_SCL);
+              sleep(5);
+              #endif
             #endif
-
-    //
-    // --- user interface
-      // start display
-        // start touch
-          #ifdef USE_TOUCHSCREEN
-            startTouch();
-            if ((md_error & ERRBIT_TOUCH) == 0 )
-            {
-              touch.wrTouch(PROJ_TITLE, 0, 1);
-              while (touch.wrStatus("setup start ..."));
-            }
-          #endif // USE_TOUCHSCREEN
-
-        //
-        // init keypad
-          #ifdef USE_KEYPADSHIELD
-            kpad.init(KEYS_ADC);
-          #endif // USE_KEYPADSHIELD
-        //
-        // start OLED display
-          #ifdef USE_OLED
-            oled.begin();
-            while (oled.wrStatus("setup start ..."));
-          #endif // USE_OLED
-
-        //
-        // start TFT1602
-          #ifdef USE_TFT1602_IO
-            startTFT(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
-          #endif
-      //
-      // start buzzer (task)
-        #ifdef USE_BUZZER
-          pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
-          #ifdef PLAY_MUSIC
-            buzz.initMusic();
-            #ifdef PLAY_START_MUSIC
-              playSong();
+      // --- user interface
+        // start display - output to user
+          startDisp();
+          dispStatus("setup start ...");
+        // start input device
+          startKeys();
+        // start buzzer (task)
+          #ifdef USE_BUZZER
+            pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
+            #ifdef PLAY_MUSIC
+              buzz.initMusic();
+              #ifdef PLAY_START_MUSIC
+                playSong();
+              #endif
             #endif
           #endif
-        #endif
 
-    //
-    // --- network
-      // start WIFI
-        #ifdef USE_WIFI
-          startWIFI();
-                #ifdef USE_TOUCHSCREEN
-                  if ((md_error & ERRBIT_WIFI) == 0)
-                  {
-                    while (touch.wrStatus("WIFI connected"));
-                  }
-                  else
-                  {
-                    while (touch.wrStatus("WIFI error"));
-                  }
-                #endif
-        #endif // USE_WIFI
-
-    //
-    // --- finish setup
-          #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
-            Serial.println();
-            Serial.print("... end setup -- error="); Serial.println(md_error);
-            Serial.println();
-          #endif
-
-  }
-
-// --- system run = endless loop
-void loop()
-  {
-    //uint16_t t_x = 0, t_y = 0; // To store the touch coordinates
-
-    // run WIFI
-      #ifdef USE_WIFI  // restart WIFI if offline
-        if(wifiT.TOut())
-        {
-          //Serial.print("WiFi md_error = "); Serial.println(md_error);
-          wifiT.startT();
-          if((md_error & ERRBIT_WIFI) > 0)
-          {
-            Serial.println("WiFi startWIFI");
-                      dispStatus("WiFi startWIFI");
+      // --- network
+        // start WIFI
+          #ifdef USE_WIFI
             startWIFI();
-          }
-        }
-      #endif // USE_WIFI
-    //
-    // run NTP server (time)
-      #ifdef USE_NTP_SERVER
-        if (ntpT.TOut() == true)
-        {
-          if ((md_error & ERRBIT_WIFI) == 0)
-          { // WiFi online
-            if (((md_error & ERRBIT_NTPTIME) > 0) || (year() < 2000))   // time not initialized
-            {
-              initNTPTime();
-              ntpGet = true;
-            }
-            if ((md_error & ERRBIT_NTPTIME) == 0) // time initialized
-            {
-              if (ntpGet == true)
+            if ((md_error & ERRBIT_WIFI) == 0)
               {
-                ntpGet = wifiMD.md_getTime(&ntpTime);
-                setTime(ntpTime);
+                dispStatus("WIFI connected");
               }
               else
               {
-                setTime(++ntpTime);
-
+                dispStatus("WIFI error");
               }
+            #endif // USE_WIFI
+      // --- finish setup
+          #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
+              SOUTLN();
+              SOUT("... end setup -- error="); Serial.println(md_error);
+              SOUTLN();
+            #endif
+    }
 
-            }
-            else // NTPTIME ok
-            {
-              setTime(++ntpTime);
-            }
-          }
-          else // Wifi error
+// --- system run = endless loop
+  void loop()
+    {
+      //uint16_t t_x = 0, t_y = 0; // To store the touch coordinates
+      #ifdef USE_WIFI  // restart WIFI if offline
+          if(wifiT.TOut())
           {
-            setTime(++ntpTime);
+            //Serial.print("WiFi md_error = "); Serial.println(md_error);
+            wifiT.startT();
+            if((md_error & ERRBIT_WIFI) > 0)
+              {
+                SOUTLN("WiFi startWIFI");
+                dispStatus("WiFi startWIFI");
+                startWIFI();
+              }
           }
+        #endif // USE_WIFI
+
+      // ----------------------
+      #ifdef USE_NTP_SERVER
+        if (ntpT.TOut() == true)
+        {
+          setTime(++ntpTime);
+          if ((md_error & ERRBIT_WIFI) == 0)
+            { // WiFi online
+              if (((md_error & ERRBIT_NTPTIME) > 0) || (year() < 2000))   // time not initialized
+                {
+                  initNTPTime();
+                  ntpGet = true;
+                }
+              if (ntpGet == true)
+                {
+                  ntpGet = wifiMD.md_getTime(&ntpTime);
+                  setTime(ntpTime);
+                }
+            }
           ntpT.startT();
                 #if (DEBUG_MODE == CFG_DEBUG_DETAILS)
-                  Serial.print("Datum "); Serial.print(day()); Serial.print("."); Serial.print(month()); Serial.print("."); Serial.print(year()); Serial.print(" ");
-                  Serial.print("Zeit "); Serial.print(hour()); Serial.print("."); Serial.print(minute()); Serial.print(":"); Serial.println(second());
+                  SOUT("Datum "); SOUT(day()); SOUT("."); SOUT(month()); SOUT("."); SOUT(year()); SOUT(" ");
+                  SOUT("Zeit "); SOUT(hour()); SOUT("."); SOUT(minute()); SOUT(":"); SOUTLN(second());
                 #endif
-          #ifdef USE_DISPLAY
-            sprintf(outBuf,"  %02d.%02d. %02d:%02d:%02d", day(), month(), hour(), minute(), second());
-              #if (defined(USE_TOUCHSCREEN))
-                touch.wrTouch(outBuf, 0, DATE_DISP_LINE);
-              #elif (defined(USE_OLED))
-                oled.wrText(outBuf, 0, DATE_DISP_LINE);
-              #endif
-          #endif
         }
-      #endif // USE_NTP_SERVER
-    //
-    // run Webserver
+        #endif // USE_NTP_SERVER
+
+
+      // ----------------------
       #ifdef USE_WEBSERVER
         if (servT.TOut()) // run webserver - restart on error
-        {
-          servT.startT();
-          if ((md_error & ERRBIT_SERVER) != 0)
           {
-            startWebServer();
+            servT.startT();
+            if ((md_error & ERRBIT_SERVER) != 0)
+              startWebServer();
+            else
+              //bool ret = webMD.md_handleClient();
+              md_error = setBit(md_error, ERRBIT_SERVER, webMD.md_handleClient());
           }
-          else
-          {
-            bool ret = webMD.md_handleClient();
-            md_error = setBit(md_error, ERRBIT_SERVER, ret);
-          }
-        }
-      #endif
-    //
-    // run Touchpad
+        #endif
+
+      // ----------------------
       #ifdef USE_TOUCHSCREEN
         touch.runTouch(outBuf);
-      #endif // USE_TOUCHSCREEN
-    //
-    // run display
-      #ifdef USE_DISPLAY
+        #endif // USE_TOUCHSCREEN
+
+      // ----------------------
+      #ifdef USE_KEYPADSHIELD
+        key = getKey();
+        if (key)
+          {
+            sprintf(outBuf,"key %d", key);
+            dispStatus(outBuf);
+          }
+        #endif
+      // ----------------------
+      #if defined(USE_DISP)
         if (dispT.TOut())    // handle touch output
           {
             dispT.startT();
@@ -462,15 +464,16 @@ void loop()
                   }
                 if (++oledIdx > 6) { oledIdx = 0; }
                 oled.sendBuffer();
-              #else
-                dispStatus("disp Status");
+              #endif
+            #ifdef USE_STATUS
+              dispStatus("");
               #endif
           }
 
-      #endif // USE_OLED
-    //
-    sleep(1);
-  }
+        #endif // defined(DISP)
+      // ----------------------
+      sleep(1);
+    }
 // --- end of implementation
 //
 // --- templates

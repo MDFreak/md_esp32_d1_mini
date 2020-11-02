@@ -6,7 +6,10 @@
   #include "md_util.h"
 
   #ifdef USE_OLED
-    #include <U8g2lib.h>
+    #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
+    #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+
+                       //#include <U8g2lib.h>
     //#include <Draht.h>
 
     // --- declarations
@@ -53,7 +56,6 @@
     {
       protected:
         msTimer _clrT     = msTimer();
-        msTimer _minT     = msTimer(STAT_TIMEMIN);
         bool    _isStatus = false; // status text visible
         char    _outTxt[STAT_LINELEN + 1] = "";
         uint8_t _wfont    = 5;
@@ -75,9 +77,8 @@
         void drawTriang (u8g2_uint_t x1, u8g2_uint_t y1, u8g2_uint_t x2, u8g2_uint_t y2, u8g2_uint_t x3, u8g2_uint_t y3);
         void drawBitmap (u8g2_uint_t x, u8g2_uint_t y, u8g2_uint_t w, u8g2_uint_t h, const uint8_t *bitmap);
         bool wrText     (const char *msg, uint8_t spalte, uint8_t zeile ); // write to text area
-        bool wrStatus   ();
-        bool wrStatus   (const char* msg);
-        bool wrStatus   (const char* msg, uint32_t stayTime);
+        void wrStatus   ();
+        void wrStatus   (const char* msg);
         #ifdef RUN_OLED_TEST
           void box_frame();
           void r_frame_box();

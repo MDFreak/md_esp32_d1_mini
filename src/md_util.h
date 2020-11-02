@@ -4,6 +4,7 @@
   #include <Arduino.h>
 
   uint16_t setBit(uint16_t inWert, uint16_t inBit, bool inVal);
+  void     scanIIC(uint8_t no, uint8_t sda, uint8_t scl);
 
   class msTimer
   {

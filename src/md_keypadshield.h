@@ -23,9 +23,11 @@
         uint8_t _adc;
 
       public:
+        md_kpad(uint8_t adc);
         bool    init(uint8_t keysAdc);
-        uint8_t getButton();
+        uint8_t getKey();
     };
+    extern md_kpad kpad;
 
   #endif // USE_KEYPADSHIELD
 #endif // _MD_LCDKEYPAD_H_

@@ -25,7 +25,7 @@
       #include "md_keypadshield.h"
     #endif // USE_KEYPADSHIELD
 
-    #ifdef USE_TFT1602_GPIO
+    #ifdef USE_TFT
       #include "md_lcd.h"
     #endif
   //

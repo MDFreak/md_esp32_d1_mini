@@ -325,21 +325,14 @@
       {
                 Serial.print(millis());
                 Serial.println(" md_startWIFI");
-      //          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-      //            Serial.print("disconnect - stat "); Serial.println(WiFi.status());
-      //          #endif
-      //  WiFi.disconnect();       // disconnect first
-      //  usleep(100000);
-
-      //  ret = md_scanWIFI();     // scan WiFi
         if (_ssid == nossid)
-        { // keine SSID
-                #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                  Serial.print(millis());
-                  Serial.println(" SSID nicht initialisiert ");
-                #endif
-          return MDERR;
-        }
+          { // keine SSID
+                  #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                    Serial.print(millis());
+                    Serial.println(" SSID nicht initialisiert ");
+                  #endif
+            return MDERR;
+          }
 
         WiFi.begin(_ssid, _passw); // start connection
         Serial.println(""); Serial.println(millis());
@@ -348,41 +341,41 @@
         usleep(WIFI_CONN_DELAY);
         uint8_t repOut = (uint8_t) WIFI_CONN_REP;
         while ((WiFi.status() != WL_CONNECTED) && (repOut > 0))
-        {
-                  #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                    Serial.print(".");
-                  #endif
-          usleep(WIFI_CONN_DELAY);
-          repOut--;
-        }
-
-        if (WiFi.status() == WL_CONNECTED)
-        {
-                  #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                    Serial.println("");
-                    Serial.print(millis());
-                    Serial.print(" Connected to ");
-                    Serial.println(_ssid);
-                    Serial.print("IP address: ");
-                    Serial.println(WiFi.localIP());
-                    Serial.print("MAC address: ");
-                    Serial.println(WiFi.macAddress());
-                  #endif
-          if (MDNS.begin("esp32"))
           {
                     #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                      Serial.println("MDNS responder started");Serial.println();
+                      Serial.print(".");
+                    #endif
+            usleep(WIFI_CONN_DELAY);
+            repOut--;
+          }
+
+        if (WiFi.status() == WL_CONNECTED)
+          {
+                    #if (DEBUG_MODE > CFG_DEBUG_NONE)
+                      Serial.println("");
+                      Serial.print(millis());
+                      Serial.print(" Connected to ");
+                      Serial.println(_ssid);
+                      Serial.print("IP address: ");
+                      Serial.println(WiFi.localIP());
+                      Serial.print("MAC address: ");
+                      Serial.println(WiFi.macAddress());
+                    #endif
+            if (MDNS.begin("esp32"))
+            {
+                      #if (DEBUG_MODE > CFG_DEBUG_NONE)
+                        Serial.println("MDNS responder started");Serial.println();
+                      #endif
+            }
+            return MDOK;
+          }
+          else
+          {
+                    #if (DEBUG_MODE > CFG_DEBUG_NONE)
+                      Serial.println("Connection failed -> timout");
                     #endif
           }
-          return MDOK;
-        }
-        else
-        {
-                  #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                    Serial.println("Connection failed -> timout");
-                  #endif
-        }
-        return MDERR;
+          return MDERR;
       }
     #ifdef USE_NTP_SERVER
       bool     md_wifi::md_initNTPTime()

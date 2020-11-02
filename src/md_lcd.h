@@ -10,10 +10,21 @@
   #ifdef USE_TFT
     #include "LiquidCrystal.h"
 
+    class md_lcd
+      {
+        protected:
+          void* _plcd;
 
+        public:
+          md_lcd(void* plcd);
+          void start(void* plcd);
+          bool wrText(char* msg);
+          bool wrText(char* msg, uint8_t row, uint8_t col);
+          bool wrStatus(char* msg);
+      };
 
-    void lcd_start(void* plcd);
   #endif
+
 
 #endif // _MD_LCD_H
 

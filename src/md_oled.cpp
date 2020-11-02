@@ -2,15 +2,16 @@
 
 #ifdef USE_OLED
 
-  U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+  U8G2_SSD1306_128X32_UNIVISION_1_SW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, I2C1_SCL, I2C1_SDA);
+  // U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, I2C1_SCL, I2C1_SDA);
 
   md_oled::md_oled()
-  {
-  }
+    {
+    }
 
   void md_oled::begin()
     {
-      //_u8g2 = u8g2;
+      u8g2.setI2CAddress(I2C1_ADDR);
       u8g2.begin();
     }
 
@@ -94,7 +95,7 @@
       u8g2.drawXBMP(x, y, im_w, im_h, bitmap);
     }
 
-  bool md_oled::wrText(const char *msg, uint8_t spalte, uint8_t zeile ) // write to text area
+  bool md_oled::wrText     (const char *msg, uint8_t spalte, uint8_t zeile ) // write to text area
     {
       //Serial.print("Write "); Serial.print(msg); Serial.print(" - "); Serial.print(zeile); Serial.print(" - "); Serial.println(spalte);
       //.setTextDatum(L_BASELINE);
@@ -104,71 +105,22 @@
       return MDOK;
     }
 
-  bool md_oled::wrStatus   () // write status line
+  void md_oled::wrStatus   () // write status line
     {
-      return wrStatus("");
+      wrStatus("");
     }
-  bool md_oled::wrStatus   (const char *msg)
+  void md_oled::wrStatus   (const char *msg)
     {
-      return wrStatus(msg,STAT_TIMEDEF);
-    }
-  bool md_oled::wrStatus   (const char *msg, uint32_t stayTime)
-    {
-      //unsigned long diffTime = millis() - statWrTime;
-      int8_t _res = 0; // -1:wait, 0:ok, 1:write , 2:clear
-      bool   _ret = MDOK;
-      if(strlen(msg) == 0)
-        {
-          if ((_isStatus == true) && (_clrT.TOut() == true))
-            { // status is visible && timeout
-              _res = 2;
-              _isStatus = false;
-                    #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                      Serial.print((uint32_t) millis());
-                      Serial.println(" Statuszeile loeschen");
-                    #endif
-            }
-        }
-      else
-        {
-          if ((_isStatus == true) && (_minT.TOut() == false))
-            { // visible status has to stay
-              _res = -1;
-            }
-          else
-            { // write it
-              _res = 1;
-              _isStatus = true;
-              if (stayTime == 0)
-                {
-                  stayTime = STAT_TIMEDEF;
-                }
-                    #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                      Serial.print((uint32_t) millis());
-                      Serial.print(" '"); Serial.print(msg);
-                      Serial.println("' Statuszeile schreiben");
-                    #endif
-            }
-        }
-      if (_res > 0)
-        {
-          memset(_outTxt, 0, STAT_LINELEN + 1);
-          if (_res == 1)
-          {
-            strncpy(_outTxt, msg, STAT_LINELEN);
-          }
-          prepare();
-          u8g2.drawStr(0, 24, _outTxt);
-          _minT.startT();              // start timer min time
-          _clrT.startT(stayTime);      // start timer max time
-          _res = 0;
-                    #if (DEBUG_MODE >= CFG_DEBUG_ACTIONS)
-                      Serial.print((uint32_t) millis());
-                      Serial.print(" '"); Serial.print(_outTxt);
-                      Serial.println("' Status malen");
-                    #endif
-        }
-        return (_ret || (_res != 0));
+      memset(_outTxt, 0, STAT_LINELEN + 1);
+      strncpy(_outTxt, msg, STAT_LINELEN);
+      prepare();
+      u8g2.drawStr(0, 24, _outTxt);
+                #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                  Serial.print((uint32_t) millis());
+                  Serial.print(" '"); Serial.print(_outTxt);
+                  Serial.println("' Statuszeile schreiben ");
+                #endif
+
     }
   #ifdef RUN_OLED_TEST
       void md_oled::r_frame_box()
