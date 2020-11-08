@@ -7,6 +7,7 @@
 
   #ifdef USE_OLED
     #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
+//    #include "SH1106Wire.h"        // legacy: #include "SSD1306.h"
     #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
 
                        //#include <U8g2lib.h>
@@ -52,18 +53,31 @@
           };
       #endif // RUN_OLED_TEST
 
+    #define _MD_OLED_MAX_ROWS 6
+    #define _MD_OLED_MAX_COLS 30
     class md_oled
     {
-      protected:
-        msTimer _clrT     = msTimer();
-        bool    _isStatus = false; // status text visible
-        char    _outTxt[STAT_LINELEN + 1] = "";
-        uint8_t _wfont    = 5;
-        uint8_t _hfont    = 8;
+      private:
+        msTimer  _clrT      = msTimer();
+        bool     _isStatus  = false; // status text visible
+        //char     _outTxt[_MD_OLED_MAX_ROWS][_MD_OLED_MAX_COLS];
+        String   _outStr[_MD_OLED_MAX_ROWS];
+        //char     _statTxt[_MD_OLED_MAX_COLS];
+        String   _statStr;
+        uint8_t  _wfont     = 8;
+        uint8_t  _hfont     = 10;
+        void*    _oled      = NULL;
+        uint8_t  _rows      = 1;
+        uint8_t  _cols      = 1;
+        uint8_t  _statRow   = 1;
+        uint8_t  _len       = 0;
 
       public:
-        md_oled();
-        void begin();
+        md_oled(uint8_t chan, uint8_t cols, uint8_t rows);
+        bool begin();
+        void clear();
+        void drawCircle(void);
+/*
         void drawStr    (u8g2_uint_t x, u8g2_uint_t y, const char *s);
         void drawFrame  (u8g2_uint_t x, u8g2_uint_t w,u8g2_uint_t h, u8g2_uint_t y);
         void drawRFrame (u8g2_uint_t x, u8g2_uint_t w,u8g2_uint_t h, u8g2_uint_t y, u8g2_uint_t r);
@@ -76,9 +90,10 @@
         void drawLine   (u8g2_uint_t x1, u8g2_uint_t y1, u8g2_uint_t x2, u8g2_uint_t y2);
         void drawTriang (u8g2_uint_t x1, u8g2_uint_t y1, u8g2_uint_t x2, u8g2_uint_t y2, u8g2_uint_t x3, u8g2_uint_t y3);
         void drawBitmap (u8g2_uint_t x, u8g2_uint_t y, u8g2_uint_t w, u8g2_uint_t h, const uint8_t *bitmap);
-        bool wrText     (const char *msg, uint8_t spalte, uint8_t zeile ); // write to text area
-        void wrStatus   ();
+*/
+        bool wrText     (String msg, uint8_t spalte, uint8_t zeile, uint8_t len); // write to text area
         void wrStatus   (const char* msg);
+        void wrStatus   (String msg);
         #ifdef RUN_OLED_TEST
           void box_frame();
           void r_frame_box();
@@ -90,9 +105,10 @@
         #endif
 
       protected:
-        void clearBuffer();
+/*
         void sendBuffer ();
         void prepare    ();
+*/
 
     };
 

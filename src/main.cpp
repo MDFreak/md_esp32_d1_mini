@@ -22,10 +22,11 @@
 
     msTimer       dispT  = msTimer(DISP_CYCLE);
     uint32_t      ze     = 1;      // aktuelle Schreibzeile
-    char          outBuf[STAT_LINELEN + 1] = "";
+    char          outBuf[DISP1_MAXCOLS + 1] = "";
+    String        outStr;
     #ifdef USE_STATUS
       msTimer     statT  = msTimer(STAT_TIMEDEF);
-      char        statOut[STAT_LINELEN + 1] = "";
+      char        statOut[DISP1_MAXCOLS + 1] = "";
       bool        statOn = false;
       //char        timeOut[STAT_LINELEN + 1] = "";
       #endif
@@ -59,7 +60,12 @@
       #endif // USE_BUZZER
 
     #ifdef USE_OLED
-        md_oled oled = md_oled();
+        #ifdef OLED1
+            md_oled oled1 = md_oled(1, DISP1_MAXCOLS, DISP1_MAXROWS);
+          #endif
+        #ifdef OLED2
+            md_oled oled2 = md_oled(2, DISP2_MAXCOLS, DISP2_MAXROWS);
+          #endif
         //      msTimer     oledT      = msTimer(DISP_CYCLE);
         uint8_t oledIdx = 0;
       #endif //USE_OLED
@@ -73,17 +79,29 @@
   // ------ user interface -----------------
     // --- user output
       // standard outputs
+        void clearDisp()
+          {
+            #ifdef USE_DISP
+                #if defined(OLED1)
+                  oled1.clear();
+                  #endif
+                #if defined(OLED2)
+                  oled2.clear();
+                  #endif
+              #endif
+          }
+
         void dispStatus(const char* msg)
           {
             #ifdef USE_STATUS
               size_t statLen = strlen(msg);
               bool   doIt    = false;
 
-              memset(statOut, ' ', STAT_LINELEN);
+              memset(statOut, ' ', DISP1_MAXCOLS);
               if (statLen)
                 {
-                  if ( statLen > STAT_LINELEN)
-                    statLen = STAT_LINELEN;
+                  if ( statLen > DISP1_MAXCOLS)
+                    statLen = DISP1_MAXCOLS;
                   memcpy(statOut, msg, statLen);
                   statOn = true;
                   statT.startT();
@@ -105,7 +123,12 @@
                     touch.wrStatus(msg);
                     #endif
                   #if defined(USE_OLED)
-                    oled.wrStatus(msg);
+                    #ifdef USE_STATUS1
+                        oled1.wrStatus(statOut);
+                      #endif
+                    #ifdef USE_STATUS2
+                        oled2.wrStatus(statOut);
+                      #endif
                           #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
                             SOUT("  md_error="); SOUTLN(md_error);
                           #endif
@@ -120,15 +143,21 @@
               #endif // USE_STATUS
           }
 
-        void dispText(char* msg, uint8_t row, uint8_t col)
+        void dispText(char* msg, uint8_t col, uint8_t row, uint8_t len)
           {
             #ifdef USE_DISP
                 #if (defined(USE_TOUCHXPT2046_AZ_3V3))
                   touch.wrTouch(msg, col, row);
                   #endif
-                #if defined(USE_OLED)
-                  oled.wrText(msg, col, row);
-                        #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                #if defined(OLED1)
+                  oled1.wrText(msg, col, row, len);
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                          SOUT("  md_error="); SOUTLN(md_error);
+                        #endif
+                  #endif
+                #if defined(OLED2)
+                  oled2.wrText(msg, col, row, len);
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
                           SOUT("  md_error="); SOUTLN(md_error);
                         #endif
                   #endif
@@ -137,10 +166,28 @@
                   #endif
               #endif
           }
-
-        void dispText(char* msg)
+        void dispText(String msg, uint8_t col, uint8_t row, uint8_t len)
           {
-            dispText(msg, 0, 0);
+            #ifdef USE_DISP
+                #if (defined(USE_TOUCHXPT2046_AZ_3V3))
+                  touch.wrTouch(msg, col, row);
+                  #endif
+                #if defined(OLED1)
+                  oled1.wrText(msg, col, row, len);
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                            SOUT((uint32_t) millis); SOUT(" dispText oled1 '"); SOUT(msg); SOUTLN("'");
+                          #endif
+                  #endif
+                #if defined(OLED2)
+                  oled2.wrText(msg, col, row, len);
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                            SOUT((uint32_t) millis); SOUT(" dispText oled2 '"); SOUT(msg); SOUTLN("'");
+                          #endif
+                  #endif
+                #if defined(USE_TFT)
+                  mlcd.wrText(msg, row, col);
+                  #endif
+              #endif
           }
 
       // --- start display
@@ -148,7 +195,7 @@
           {
             #ifdef USE_DISP
               #ifdef USE_STATUS
-                statOut[STAT_LINELEN] = 0;  // limit strlen
+                statOut[DISP1_MAXCOLS] = 0;  // limit strlen
                 #endif
               #if defined(USE_TFT)
                 mlcd.start(plcd);
@@ -163,8 +210,11 @@
                         SOUT("  md_error="); SOUTLN(md_error);
                       #endif
                 #endif
-              #if defined (USE_OLED)
-                  oled.begin();
+              #if defined (OLED1)
+                  oled1.begin();
+                #endif
+              #if defined (OLED2)
+                  oled2.begin();
                 #endif
               #endif
           }
@@ -181,6 +231,8 @@
           {
             #if defined(USE_KEYPADSHIELD)
                 return kpad.getKey();
+              #else
+                return NOKEY;
               #endif // USE_KEYPADSHIELD
           }
   // ------ NTP server -------------------
@@ -309,10 +361,10 @@
               #endif
           #ifdef SCAN_IIC
             scanIIC(1, I2C1_SDA, I2C1_SCL);
-            sleep(5);
-            #ifdef SDA2
+            sleep(1);
+            #ifdef I2C2_SDA
               scanIIC(2, I2C2_SDA, I2C2_SCL);
-              sleep(5);
+              sleep(1);
               #endif
             #endif
       // --- user interface
@@ -465,11 +517,48 @@
                 if (++oledIdx > 6) { oledIdx = 0; }
                 oled.sendBuffer();
               #endif
+              //#ifdef OLED_NOTEST
+                oledIdx++;
+                switch (oledIdx)
+                  {
+                  case 1:
+                    outStr = "0-0-6";
+                    dispText(outStr ,  0, 0, 6);
+                    outStr = "";
+                    dispText(outStr ,  7, 0, 6);
+                    outStr = "15-0-6";
+                    dispText(outStr , 14, 0, 6);
+                    outStr = "";
+                    dispText(outStr ,  0, 1, 6);
+                    outStr = "8-1-6";
+                    dispText(outStr ,  7, 1, 6);
+                    outStr = "";
+                    dispText(outStr , 14, 1, 6);
+                      //SOUT((uint32_t) millis()); SOUT(" SW1 '"); SOUT(outBuf); SOUTLN("'");
+                    break;
+                  case 2:
+                    outStr = "";
+                    dispText(outStr ,  0, 0, 6);
+                    outStr = "7-1-6";
+                    dispText(outStr ,  7, 0, 6);
+                    outStr = "";
+                    dispText(outStr , 14, 0, 6);
+                    outStr = "0-1-6";
+                    dispText(outStr ,  0, 1, 6);
+                    outStr = "";
+                    dispText(outStr ,  7, 1, 6);
+                    outStr = "14-1-6";
+                    dispText(outStr , 14, 1, 6);
+                    break;
+                  default:
+                    oledIdx = 0;
+                    break;
+                  }
+              //#endif
             #ifdef USE_STATUS
               dispStatus("");
               #endif
           }
-
         #endif // defined(DISP)
       // ----------------------
       sleep(1);

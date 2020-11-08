@@ -15,6 +15,8 @@
       #define LN   LF
       #define U3V3  3
       #define U5V   5
+
+      #define NOKEY 0
     //
     // --- macros
       #define SET(b)    (b = true)

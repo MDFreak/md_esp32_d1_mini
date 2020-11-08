@@ -411,7 +411,7 @@
                     const unsigned long seventyYears = 2208988800UL;
                     //unsigned long epoch = secsSince1900 - seventyYears;
                     *ntpEpoche = secsSince1900 - seventyYears
-                               + UTC_TIMEZONE + UTC_SUMMERTIME * 3600;
+                               + UTC_TIMEZONE; // + UTC_SUMMERTIME * 3600;
                     return MDOK;
                   }
               }

@@ -56,6 +56,7 @@ void scanIIC(uint8_t no, uint8_t sda, uint8_t scl)
         Serial.print("Scan Completed, ");
         Serial.print(cnt);
         Serial.println(" I2C Devices found.");
+        I2C.~TwoWire();
   }
 
 // class msTimer

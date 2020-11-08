@@ -28,7 +28,6 @@
   // --- display output
     #define DISP_CYCLE       1000ul   // Intervallzeit [us]
     // output status line
-    #define STAT_LINELEN     16       // length of status line
     #define STAT_TIMEDEF     5000u    // default time to clear status
 
   // --- Netzwerk

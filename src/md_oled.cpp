@@ -2,22 +2,88 @@
 
 #ifdef USE_OLED
 
-  U8G2_SSD1306_128X32_UNIVISION_1_SW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, I2C1_SCL, I2C1_SDA);
-  // U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, I2C1_SCL, I2C1_SDA);
+  #if defined(OLED1)
+      #if (OLED1 == DISP_OLED_091_AZ_3V3)
+          SSD1306Wire _oled2 = SSD1306Wire(OLED1_I2C_ADDR, I2C1_SDA, I2C1_SCL, GEOMETRY_128_32);
+      #elif (OLED1 == DISP_OLED_096_AZ_3V3)
+          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, I2C1_SDA, I2C1_SCL, GEOMETRY_128_64);
+      #elif (OLED1 == DISP_OLED_130_AZ_3V3)
+          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, I2C1_SDA, I2C1_SCL, GEOMETRY_128_64);
+        #endif
+    #endif
 
-  md_oled::md_oled()
+  #if defined(OLED2)
+      #if (OLED2 == DISP_OLED_091_AZ_3V3)
+          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, I2C2_SDA, I2C2_SCL, GEOMETRY_128_32);
+      #elif (OLED2 == DISP_OLED_096_AZ_3V3)
+          SSD1306Wire _oled1 = SSD1306Wire(OLED2_I2C_ADDR, I2C2_SDA, I2C2_SCL, GEOMETRY_128_64);
+      #elif (OLED2 == DISP_OLED_130_AZ_3V3)
+          SSD1306Wire _oled1 = SSD1306Wire(OLED2_I2C_ADDR, I2C2_SDA, I2C2_SCL, GEOMETRY_128_64);
+        #endif
+    #endif
+
+  md_oled::md_oled(uint8_t chan, uint8_t cols, uint8_t rows)
     {
+      _rows = rows;
+      _cols = cols;
+      if (rows > _MD_OLED_MAX_ROWS)
+        {
+          _cols = _MD_OLED_MAX_ROWS;
+        }
+      switch (chan)
+        {
+          case 1:
+            #ifdef OLED1
+                _oled = (void*) &_oled1;
+                #ifdef USE_STATUS1
+                    _statRow = STATUS1_LINE;
+                  #endif
+              #endif
+            break;
+          case 2:
+            #ifdef OLED2
+                _oled = (void*) &_oled2;
+                #ifdef USE_STATUS2
+                    _statRow = STATUS2_LINE;
+                  #endif
+              #endif
+            break;
+          default: break;
+        }
     }
 
-  void md_oled::begin()
+  bool md_oled::begin()
     {
-      u8g2.setI2CAddress(I2C1_ADDR);
-      u8g2.begin();
+        if (((SSD1306Wire*) _oled)->init())
+          {
+            ((SSD1306Wire*) _oled)->flipScreenVertically();
+            for (uint8_t k = 0 ; k < _cols ; k++ )
+              {
+                _statStr += " ";
+              }
+            for (uint8_t i = 0 ; i < _rows ; i++)
+              {
+                _outStr[i] = _statStr;
+              }
+            SOUTLN("oled init ok");
+            return MDOK;
+          }
+        SOUTLN("oled init err");
+      return MDERR;
+      //oled1.setFont(ArialMT_Plain_10);
     }
 
-  void md_oled::clearBuffer()
+  void md_oled::clear()
     {
-      u8g2.clearBuffer();
+      ((SSD1306Wire*) _oled)->connect();
+      ((SSD1306Wire*) _oled)->clear();
+    }
+
+
+/*
+  void md_oled::drawStr    (u8g2_uint_t x, u8g2_uint_t y, const char *s)
+    {
+      u8g2.drawStr(x, y, s);
     }
 
   void md_oled::sendBuffer()
@@ -33,11 +99,6 @@
       u8g2.setDrawColor(5);
       u8g2.setFontPosTop();
       u8g2.setFontDirection(0);
-    }
-
-  void md_oled::drawStr    (u8g2_uint_t x, u8g2_uint_t y, const char *s)
-    {
-      u8g2.drawStr(x, y, s);
     }
 
   void md_oled::drawFrame  (u8g2_uint_t x, u8g2_uint_t y,u8g2_uint_t w, u8g2_uint_t h)
@@ -94,33 +155,121 @@
     {
       u8g2.drawXBMP(x, y, im_w, im_h, bitmap);
     }
+*/
 
-  bool md_oled::wrText     (const char *msg, uint8_t spalte, uint8_t zeile ) // write to text area
+  bool md_oled::wrText     (String msg, uint8_t col, uint8_t row, uint8_t len) // write to text area
     {
-      //Serial.print("Write "); Serial.print(msg); Serial.print(" - "); Serial.print(zeile); Serial.print(" - "); Serial.println(spalte);
-      //.setTextDatum(L_BASELINE);
+      if ((row > _rows) || (col > _cols))  return MDERR;
 
-      strncpy(_outTxt, msg, STAT_LINELEN - spalte + 1);
-      u8g2.drawStr( spalte * _wfont, zeile * _hfont, _outTxt);
+      _len = len;
+      if ((col + len) > _cols) { _len = _cols - col; }
+          //SOUT((uint32_t) millis); SOUT(" wrText1 '"); SOUT(msg); SOUT("' _rows="); SOUT(_rows);
+          //SOUT(" col="); SOUT(col); SOUT(" row="); SOUT(row); SOUT(" _len="); SOUTLN(_len);
+      ((SSD1306Wire*) _oled)->connect();
+      ((SSD1306Wire*) _oled)->setTextAlignment(TEXT_ALIGN_LEFT);
+      // clear statusline
+      ((SSD1306Wire*) _oled)->setColor(BLACK);
+          //SOUT(" OutTxt ")
+          //SOUT((uint32_t) millis); SOUT(" wrText2 clr '"); SOUT(_outStr[row]); SOUT("' _rows="); SOUT(_rows);
+          //SOUT(" col="); SOUT(col); SOUT(" row="); SOUT(row); SOUT(" _len="); SOUTLN(_len);
+      ((SSD1306Wire*) _oled)->drawString(0, row*_hfont, _outStr[row]);
+      ((SSD1306Wire*) _oled)->display();
+      ((SSD1306Wire*) _oled)->setColor(WHITE);
+      for (uint8_t i = col ; i < (col + _len) ; i++) { _outStr[row][i] = ' '; }
+      // enter new message
+      if (msg.length() < _len) { _len = msg.length(); }
+          //SOUT(" wrText3 vor set '"); SOUT(_outStr[row]); SOUT("' _rows="); SOUT(_rows);
+          //SOUT(" col="); SOUT(col); SOUT(" row="); SOUT(row); SOUT(" _len="); SOUTLN(_len);
+      for (uint8_t i = 0 ; i < _len ; i++) { _outStr[row][col + i] = msg[i]; }
+          //SOUT(" wrText3 nach set '");  SOUT(msg); SOUT("' -> '"); SOUT(_outStr[row]); SOUT("'");
+          //SOUT(" col="); SOUT(col); SOUT(" row="); SOUT(row); SOUT(" _len="); SOUTLN(_len);
+      ((SSD1306Wire*) _oled)->drawString(0, row*_hfont, _outStr[row]);
+      ((SSD1306Wire*) _oled)->display(); // write the buffer to the display
       return MDOK;
     }
 
-  void md_oled::wrStatus   () // write status line
+      // Adapted from Adafruit_SSD1306
+  void md_oled::drawCircle(void)
+     {
+      /*
+        for (int16_t i=0; i<((SSD1306Wire*) _oled)->getHeight(); i+=2)
+          {
+            ((SSD1306Wire*) _oled)->drawCircle(
+                    ((SSD1306Wire*) _oled)->getWidth()/2,
+                    ((SSD1306Wire*) _oled)->getHeight()/2,
+                    i);
+            ((SSD1306Wire*) _oled)->display();
+            sleep(1);
+          }
+        //sleep(5);
+        //((SSD1306Wire*) _oled)->clear();
+
+        // This will draw the part of the circel in quadrant 1
+        // Quadrants are numberd like this:
+        //   0010 | 0001
+        //  ------|-----
+        //   0100 | 1000
+        //
+        ((SSD1306Wire*) _oled)->drawCircleQuads(
+                ((SSD1306Wire*) _oled)->getWidth()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/4,
+                0b00000001);
+        ((SSD1306Wire*) _oled)->display();
+        sleep(1);
+        ((SSD1306Wire*) _oled)->setColor(BLACK);
+        ((SSD1306Wire*) _oled)->drawCircleQuads(
+                ((SSD1306Wire*) _oled)->getWidth()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/4,
+                0b00000011);
+        ((SSD1306Wire*) _oled)->display();
+        sleep(1);
+        ((SSD1306Wire*) _oled)->setColor(WHITE);
+        ((SSD1306Wire*) _oled)->drawCircleQuads(
+                ((SSD1306Wire*) _oled)->getWidth()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/4,
+                0b00000111);
+        ((SSD1306Wire*) _oled)->display();
+        sleep(1);
+        ((SSD1306Wire*) _oled)->setColor(BLACK);
+        ((SSD1306Wire*) _oled)->drawCircleQuads(
+                ((SSD1306Wire*) _oled)->getWidth()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/2,
+                ((SSD1306Wire*) _oled)->getHeight()/4,
+                0b00001111);
+        ((SSD1306Wire*) _oled)->display();
+        sleep(1);
+        ((SSD1306Wire*) _oled)->setColor(WHITE);
+      */
+    }
+
+
+  void md_oled::wrStatus   (String msg) // write status line
     {
-      wrStatus("");
+      ((SSD1306Wire*) _oled)->connect();
+      ((SSD1306Wire*) _oled)->setTextAlignment(TEXT_ALIGN_LEFT);
+      // clear statusline
+      ((SSD1306Wire*) _oled)->setColor(BLACK);
+      ((SSD1306Wire*) _oled)->drawString(0, (_rows -1)*_hfont, _statStr);
+      ((SSD1306Wire*) _oled)->display();
+      ((SSD1306Wire*) _oled)->setColor(WHITE);
+      for (uint8_t i = 0 ; i < _cols ; i++) { _statStr[i] = ' '; }
+      // enter new message
+      _len = msg.length();
+      if (_len > _cols) { _len = _cols; }
+      for (uint8_t i = 0 ; i < _len ; i++) { _statStr[i] = msg[i]; }
+      ((SSD1306Wire*) _oled)->drawString(0, (_rows -1)*_hfont, _statStr);
+                #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                  SOUT((uint32_t) millis()); SOUT(" oled _statTxt'"); SOUT(_statStr);
+                  SOUTLN("' Statuszeile schreiben ");
+                #endif
+      ((SSD1306Wire*) _oled)->display();
     }
   void md_oled::wrStatus   (const char *msg)
     {
-      memset(_outTxt, 0, STAT_LINELEN + 1);
-      strncpy(_outTxt, msg, STAT_LINELEN);
-      prepare();
-      u8g2.drawStr(0, 24, _outTxt);
-                #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                  Serial.print((uint32_t) millis());
-                  Serial.print(" '"); Serial.print(_outTxt);
-                  Serial.println("' Statuszeile schreiben ");
-                #endif
-
+      wrStatus((String) msg);
     }
   #ifdef RUN_OLED_TEST
       void md_oled::r_frame_box()
