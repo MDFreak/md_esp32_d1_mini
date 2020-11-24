@@ -24,27 +24,15 @@
     uint32_t      ze     = 1;      // aktuelle Schreibzeile
     char          outBuf[DISP1_MAXCOLS + 1] = "";
     String        outStr;
+    #ifdef SCAN_IIC
+      uint8_t       devIIC[ANZ_IIC][SCAN_IIC];
+      #endif
     #ifdef USE_STATUS
       msTimer     statT  = msTimer(STAT_TIMEDEF);
       char        statOut[DISP1_MAXCOLS + 1] = "";
       bool        statOn = false;
       //char        timeOut[STAT_LINELEN + 1] = "";
       #endif
-  // ------ network ----------------------
-    #ifdef USE_WIFI
-      msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
-      #endif
-
-    #ifdef USE_WEBSERVER
-      msTimer servT = msTimer(WEBSERVER_CYCLE);
-      #endif // USE_WEBSERVER
-
-    #ifdef USE_NTP_SERVER
-      msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
-      time_t  ntpTime = 0;
-      bool    ntpGet  = true;
-      #endif // USE_WEBSERVER
-
   // ------ user interface ---------------
     #ifdef USE_TOUCHSCREEN
         md_touch touch = md_touch();
@@ -75,6 +63,33 @@
         void*          plcd = (void*) &lcd;
         md_lcd         mlcd(plcd);
       #endif
+  // ------ network ----------------------
+    #ifdef USE_WIFI
+      msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
+      #endif
+
+    #ifdef USE_WEBSERVER
+      msTimer servT = msTimer(WEBSERVER_CYCLE);
+      #endif // USE_WEBSERVER
+
+    #ifdef USE_NTP_SERVER
+      msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
+      time_t  ntpTime = 0;
+      bool    ntpGet  = true;
+      #endif // USE_WEBSERVER
+
+  // ------ sensors ----------------------
+    #ifdef USE_DS18B20
+        OneWire dsOneWire(DS_ONEWIRE_PIN);
+        DallasTemperature dsSensors(&dsOneWire);
+        DeviceAddress     dsAddr[DS18B20_ANZ];
+        float dsTemp[DS18B20_ANZ];
+      #endif
+
+  // ------ memories
+    #ifdef USE_FRAM_32K_I2C
+        FRAM fram = FRAM();
+      #endif
 // --- private prototypes
   // ------ user interface -----------------
     // --- user output
@@ -91,18 +106,18 @@
               #endif
           }
 
-        void dispStatus(const char* msg)
+        void dispStatus(String msg)
           {
             #ifdef USE_STATUS
-              size_t statLen = strlen(msg);
+              size_t statLen = msg.length();
               bool   doIt    = false;
 
-              memset(statOut, ' ', DISP1_MAXCOLS);
               if (statLen)
                 {
                   if ( statLen > DISP1_MAXCOLS)
-                    statLen = DISP1_MAXCOLS;
-                  memcpy(statOut, msg, statLen);
+                    {
+                      msg.remove(DISP1_MAXCOLS);
+                    }
                   statOn = true;
                   statT.startT();
                   doIt = true;    // output statOut
@@ -115,6 +130,7 @@
               if (!statOn) // disp actual time
                 {
                   sprintf(statOut,"%02d.%02d. %02d:%02d:%02d ", day(), month(), hour(), minute(), second());
+                  msg = statOut;
                   doIt = true;
                 }
               if (doIt)
@@ -123,24 +139,78 @@
                     touch.wrStatus(msg);
                     #endif
                   #if defined(USE_OLED)
-                    #ifdef USE_STATUS1
-                        oled1.wrStatus(statOut);
-                      #endif
-                    #ifdef USE_STATUS2
-                        oled2.wrStatus(statOut);
-                      #endif
-                          #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                            SOUT("  md_error="); SOUTLN(md_error);
-                          #endif
+                      #ifdef USE_STATUS1
+                          oled1.wrStatus(msg);
+                        #endif
+                      #ifdef USE_STATUS2
+                          oled2.wrStatus(msg);
+                        #endif
+                            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                              SOUT("  md_error="); SOUTLN(md_error);
+                            #endif
                     #endif
                   #if defined(USE_TFT)
-                    mlcd.wrStatus((char*) statOut);
+                      mlcd.wrStatus((char*) statOut);
                           #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                            SOUT("  md_error="); SOUTLN(md_error);
-                          #endif
+                              SOUT("  md_error="); SOUTLN(md_error);
+                            #endif
                     #endif // USE_DISP
                 }
               #endif // USE_STATUS
+          }
+        void dispStatus(const char* msg)
+          {
+            dispStatus((String) msg);
+            /* old
+              #ifdef USE_STATUS
+                size_t statLen = strlen(msg);
+                bool   doIt    = false;
+
+                memset(statOut, ' ', DISP1_MAXCOLS);
+                if (statLen)
+                  {
+                    if ( statLen > DISP1_MAXCOLS)
+                      statLen = DISP1_MAXCOLS;
+                    memcpy(statOut, msg, statLen);
+                    statOn = true;
+                    statT.startT();
+                    doIt = true;    // output statOut
+                    statT.startT();
+                  }
+                else // empty input
+                  if (statOn && statT.TOut())
+                    statOn = false;
+
+                if (!statOn) // disp actual time
+                  {
+                    sprintf(statOut,"%02d.%02d. %02d:%02d:%02d ", day(), month(), hour(), minute(), second());
+                    doIt = true;
+                  }
+                if (doIt)
+                  {
+                    #if defined(USE_TOUCHXPT2046_AZ_3V3)
+                      touch.wrStatus(msg);
+                      #endif
+                    #if defined(USE_OLED)
+                      #ifdef USE_STATUS1
+                          oled1.wrStatus(statOut);
+                        #endif
+                      #ifdef USE_STATUS2
+                          oled2.wrStatus(statOut);
+                        #endif
+                            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                              SOUT("  md_error="); SOUTLN(md_error);
+                            #endif
+                      #endif
+                    #if defined(USE_TFT)
+                      mlcd.wrStatus((char*) statOut);
+                            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                              SOUT("  md_error="); SOUTLN(md_error);
+                            #endif
+                      #endif // USE_DISP
+                  }
+                #endif // USE_STATUS
+            */
           }
 
         void dispText(char* msg, uint8_t col, uint8_t row, uint8_t len)
@@ -235,6 +305,9 @@
                 return NOKEY;
               #endif // USE_KEYPADSHIELD
           }
+    // --- sensors
+      // --- DS18B20
+        void getDS18D20Str(String outS);
   // ------ NTP server -------------------
     #ifdef USE_NTP_SERVER
       void initNTPTime()
@@ -349,10 +422,10 @@
 
     #endif
 
-
 // --- system startup
   void setup()
     {
+      uint8_t n   = 0;
       // --- system
         // start system
           Serial.begin(SER_BAUDRATE);
@@ -360,10 +433,35 @@
                 SOUTLN(); SOUTLN("setup start ...");
               #endif
           #ifdef SCAN_IIC
-            scanIIC(1, I2C1_SDA, I2C1_SCL);
+            uint8_t addr = 0;
+            // reset array
+            for ( n= 0 ; n < ANZ_IIC ; n++)
+              for (uint8_t i=0 ; i < SCAN_IIC ; i++)
+                devIIC[n][i] = 0;
+            // check I2C1 for devices
+            while (addr < SCAN_IIC)
+              {
+                addr = scanIIC(1, addr, I2C1_SDA, I2C1_SCL);
+                if ((0 < addr) && (addr < SCAN_IIC))
+                  {
+                    devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
+                    devIIC[0][0]++;
+                    addr++;
+                  }
+              }
             sleep(1);
             #ifdef I2C2_SDA
-              scanIIC(2, I2C2_SDA, I2C2_SCL);
+              addr = 0;
+              while (addr < SCAN_IIC)
+                {
+                  addr = scanIIC(2, addr, I2C2_SDA, I2C2_SCL);
+                  if ((0 < addr) && (addr < SCAN_IIC))
+                    {
+                      devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
+                      devIIC[0][0]++;
+                      addr++;
+                    }
+                }
               sleep(1);
               #endif
             #endif
@@ -397,10 +495,104 @@
                 dispStatus("WIFI error");
               }
             #endif // USE_WIFI
+      // --- sensors
+        // temp. sensor DS18D20
+          #ifdef USE_DS18B20
+                    SOUT(millis()); SOUTLN(" DS18D20 ... " );
+                dsSensors.begin();
+                getDS18D20Str(outStr);
+                dispStatus(outStr);
+                    SOUTLN(outStr);
+            #endif
+      // --- memories
+        // FRAM
+          #ifdef USE_FRAM_32K_I2C  // NIO funktioniert nicht
+              /*
+                uint8_t myaddr = FRAM_ADDR;
+                #if defined(CHECK_I2C_DEVICES)
+                    #if (FRAM_I2C_SDA == I2C2_SDA)
+                        cnt = 0;
+                        while (cnt < devIIC[1][0])
+                          {
+                            for ( n = 0 ; n < ANZ_IIC ; n++ )
+                              {
+                                if (devIIC[1][n] > 0)
+                                  {
+                                    Serial.print("test I2C addr "); Serial.println(n);
+                                    if (fram.begin(n))
+                                      {
+                                        Serial.print("found I2C FRAM addr "); Serial.print(n);
+                                        devIIC[1][n] = IIC_FRAM_3V5V;
+                                        myaddr = n;
+                                      }
+                                  }
+                              }
+                          }
+                      #endif
+                  #endif
+              */
+            // Read the first byte
+            SOUT("FRAM addr "); SOUTHEX(FRAM_ADDR);
+            int ret = fram.begin(FRAM_ADDR, NN);
+            switch (ret)
+              {
+                case 0:
+                  {
+                    SOUT(" status ");
+                    // read fram status
+                    uint16_t val = (uint16_t) fram.read8(0x00);
+                    if (val == FRAM_STAT_ISINIT)
+                      {
+                        SOUT("is init - next addr ");
+                        val = fram.read16(0x01);
+                        SOUTHEX(val); SOUTLN();
+                      }
+                    else
+                      {
+                        SOUT("initializing next addr ");
+                        fram.write8(FRAM_ADDR_STAT, FRAM_STAT_ISINIT);
+                        fram.write8(FRAM_ADDR_VERS, FRAM_STAT_ISINIT);
+                        fram.write16(FRAM_ADDR_DATA_NEXT,FRAM_ADDR_DATA_START);
+                        SOUTHEX(FRAM_ADDR_DATA_START);
+                      }
+
+                    // dump the entire 32K of memory!
+                    uint8_t v;
+                    for (uint16_t a = 0; a < 128; a++)
+                      {
+                        v = fram.read8(a);
+                        if ((a % 32) == 0)
+                          {
+                            SOUT("\n ");
+                            if (a < 0x10) { SOUT('0'); }
+                            SOUTHEX(a); SOUT(": ");
+                          }
+                        //Serial.print("0x");
+                        if (v < 0x1) { SOUT('0'); }
+                        SOUTHEX(v); SOUT(" ");
+                      }
+                    break;
+                  }
+                default:
+                  SOUT(" ERR "); SOUTLN(ret);
+                  break;
+              }
+
+
+
+            /*  uint16_t prodID = 0;
+                uint16_t manuID = 0;
+                    SOUT(millis()); SOUT(" FRAM addr "); SOUTLN(FRAM_ADDR);
+                fram.begin(FRAM_ADDR);
+                fram.getDeviceID(&manuID, &prodID);
+                    SOUT("FRAM ProdID 0x"); Serial.print(prodID, HEX);
+                    SOUT("  ManuID 0x"); Serial.println(manuID, HEX);
+              */
+            #endif
       // --- finish setup
           #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
               SOUTLN();
-              SOUT("... end setup -- error="); Serial.println(md_error);
+              SOUT("... end setup -- error="); SOUTLN(md_error);
               SOUTLN();
             #endif
     }
@@ -528,12 +720,6 @@
                     dispText(outStr ,  7, 0, 6);
                     outStr = "15-0-6";
                     dispText(outStr , 14, 0, 6);
-                    outStr = "";
-                    dispText(outStr ,  0, 1, 6);
-                    outStr = "8-1-6";
-                    dispText(outStr ,  7, 1, 6);
-                    outStr = "";
-                    dispText(outStr , 14, 1, 6);
                       //SOUT((uint32_t) millis()); SOUT(" SW1 '"); SOUT(outBuf); SOUTLN("'");
                     break;
                   case 2:
@@ -543,12 +729,17 @@
                     dispText(outStr ,  7, 0, 6);
                     outStr = "";
                     dispText(outStr , 14, 0, 6);
-                    outStr = "0-1-6";
-                    dispText(outStr ,  0, 1, 6);
+                    break;
+                  case 3:
+                    break;
+                  case 4:
+                    break;
+                  case 5:
                     outStr = "";
-                    dispText(outStr ,  7, 1, 6);
-                    outStr = "14-1-6";
-                    dispText(outStr , 14, 1, 6);
+                    getDS18D20Str(outStr);
+                    dispText(outStr ,  0, 4, outStr.length());
+                    break;
+                  case 6:
                     break;
                   default:
                     oledIdx = 0;
@@ -563,6 +754,21 @@
       // ----------------------
       sleep(1);
     }
+// --- subroutines
+  void getDS18D20Str(String outS)
+    {
+      #ifdef USE_DS18B20
+          dsSensors.requestTemperatures(); // Send the command to get temperatures
+          for (uint8_t i = 0 ; i < DS18B20_ANZ ; i++ )
+            {
+              dsTemp[i] = dsSensors.getTempCByIndex(i);
+              if (i < 1) { outStr  = "T1  "; }
+              else       { outStr += "    T2  ";}
+              outStr += dsTemp[i];
+            }
+        #endif
+    }
+
 // --- end of implementation
 //
 // --- templates

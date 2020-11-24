@@ -23,6 +23,7 @@
       #define RESET(b)  (b = false)
 
       #define SOUT(c)   (Serial.print(c))
+      #define SOUTHEX(c)(Serial.print(c, HEX))
       #define SOUTLN(c) (Serial.println(c))
     //
     // --- voltage defines
@@ -34,23 +35,24 @@
     // --- boards
       // --- 3V3 & 5V tolerant boards     0x00 - 0x3F = 0 - 63
       // --- 5V boards                    0x40 - 0x7F = 64 - 127
-        #define  BRD_ARD_NANO_V3_AZ_V5    U_5V + 0
-        #define  BRD_ARD_UNO_V3_AZ_V5     U_5V + 1
+        #define  BRD_ARD_NANO_V3_AZ_V5    U_5V   + 0
+        #define  BRD_ARD_UNO_V3_AZ_V5     U_5V   + 1
       // --- 3.3V boards                  0x80 - 0xBF = 128 - 191
-        #define  BRD_ESP32S_Node_AZ_3V3   U_3V3 + 0
-        #define  BRD_ESP32_D1_R32_AZ_3V3  U_3V3 + 1
+        #define  BRD_ESP32S_Node_AZ_3V3   U_3V3  + 0
+        #define  BRD_ESP32_Node_AZ_3V3    U_3V3  + 1
+        #define  BRD_ESP32_D1_R32_AZ_3V3  U_3V3  + 2
     //
     // --- displays - values not used
       // --- 3V3 & 5V tolerant displays   0x00 - 0x3F = 0 - 63
-        #define  DISP_TFT1602_IIC_XA_3V3  U_3V3 + 0
+        #define  DISP_TFT1602_IIC_XA_3V3  U_3V3  + 0
       // --- 5V  displays                 0x40 - 0x7F = 64 - 127
-        #define  DISP_TFT1602_GPIO_RO_V5  U_5V  + 0  // used by KEYPADSHIELD
+        #define  DISP_TFT1602_GPIO_RO_V5  U_5V   + 0  // used by KEYPADSHIELD
       // --- 3V3 displays                 0x80 - 0xBF = 128 - 191
-        #define  DISP_TFT1602_GPIO_RO_3V3 U_3V3 + 0  // used by KEYPADSHIELD
-        #define  DISP_OLED_091_AZ_3V3     U_3V3 + 1  // IIC adress 0x3C
-        #define  DISP_OLED_096_AZ_3V3     U_3V3 + 2
-        #define  DISP_OLED_130_AZ_3V3     U_3V3 + 3
-        #define  DISP_TOUCHXPT2046_AZ_3V3 U_3V3 + 4  // used by Arduino-touch-case
+        #define  DISP_TFT1602_GPIO_RO_3V3 U_3V3  + 0  // used by KEYPADSHIELD
+        #define  DISP_OLED_091_AZ_3V3     U_3V3  + 1  // IIC adress 0x3C
+        #define  DISP_OLED_096_AZ_3V3     U_3V3  + 2
+        #define  DISP_OLED_130_AZ_3V3     U_3V3  + 3
+        #define  DISP_TOUCHXPT2046_AZ_3V3 U_3V3  + 4  // used by Arduino-touch-case
     //
     // --- key parts
       // --- 3V3 & 5V tolerant key parts  0x00 - 0x3F = 0 - 63
@@ -66,10 +68,15 @@
       // --- 5V outputs                   0x40 - 0x7F = 64 - 127
       // --- 3V3 outputs                  0x80 - 0xBF = 128 - 191
 
-    //
-    // --- assemblies
-      #define ASS_NN                NN
-      #define ASS_TOUCH_ESP32_AZ    1
+    // --- I2C devices
+      // --- 3V3 & 5V tolerant devices    0x00 - 0x3F = 0 - 63
+        #define  IIC_TFT1602_IIC_XA_3V3   U_3V3  + 0
+        #define  IIC_FRAM_3V5V            U_3V5V + 1
+        #define  IIC_DEV_NN               255
+      // --- 5V devices                   0x40 - 0x7F = 64 - 127
+      // --- 3.3V devices                 0x80 - 0xBF = 128 - 191
+        #define  IIC_OLED_3V3             U_3V3  + 1  // IIC adress 0x3C
+
     //
     // --- switching projects
       #define CFG_PROJ_DEFTEST      0   // default Test

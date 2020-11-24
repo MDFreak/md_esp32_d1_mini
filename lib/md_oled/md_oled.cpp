@@ -4,21 +4,21 @@
 
   #if defined(OLED1)
       #if (OLED1 == DISP_OLED_091_AZ_3V3)
-          SSD1306Wire _oled2 = SSD1306Wire(OLED1_I2C_ADDR, I2C1_SDA, I2C1_SCL, GEOMETRY_128_32);
+          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, OLED1_I2C_SDA, OLED1_I2C_SCL, GEOMETRY_128_32);
       #elif (OLED1 == DISP_OLED_096_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, I2C1_SDA, I2C1_SCL, GEOMETRY_128_64);
+          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, OLED1_I2C_SDA, OLED1_I2C_SCL, GEOMETRY_128_64);
       #elif (OLED1 == DISP_OLED_130_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, I2C1_SDA, I2C1_SCL, GEOMETRY_128_64);
+          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, OLED1_I2C_SDA, OLED1_I2C_SCL, GEOMETRY_128_64);
         #endif
     #endif
 
   #if defined(OLED2)
       #if (OLED2 == DISP_OLED_091_AZ_3V3)
-          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, I2C2_SDA, I2C2_SCL, GEOMETRY_128_32);
+          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, OLED2_I2C_SDA, OLED2_I2C_SCL, GEOMETRY_128_32);
       #elif (OLED2 == DISP_OLED_096_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED2_I2C_ADDR, I2C2_SDA, I2C2_SCL, GEOMETRY_128_64);
+          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, OLED2_I2C_SDA, OLED2_I2C_SCL, GEOMETRY_128_64);
       #elif (OLED2 == DISP_OLED_130_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED2_I2C_ADDR, I2C2_SDA, I2C2_SCL, GEOMETRY_128_64);
+          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, OLED2_I2C_SDA, OLED2_I2C_SCL, GEOMETRY_128_64);
         #endif
     #endif
 
@@ -36,7 +36,7 @@
             #ifdef OLED1
                 _oled = (void*) &_oled1;
                 #ifdef USE_STATUS1
-                    _statRow = STATUS1_LINE;
+                    _statRow = rows;
                   #endif
               #endif
             break;
@@ -44,7 +44,7 @@
             #ifdef OLED2
                 _oled = (void*) &_oled2;
                 #ifdef USE_STATUS2
-                    _statRow = STATUS2_LINE;
+                    _statRow = rows;
                   #endif
               #endif
             break;

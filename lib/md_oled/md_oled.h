@@ -2,13 +2,13 @@
   #define _MD_OLED_H_
 
   #include <Arduino.h>
-  #include "config.h"
-  #include "md_util.h"
+  #include <config.h>
+  #include <md_util.h>
 
   #ifdef USE_OLED
     #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
 //    #include "SH1106Wire.h"        // legacy: #include "SSD1306.h"
-    #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+    #include <SSD1306Wire.h>        // legacy: #include "SSD1306.h"
 
                        //#include <U8g2lib.h>
     //#include <Draht.h>
