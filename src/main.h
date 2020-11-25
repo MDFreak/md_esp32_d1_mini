@@ -19,7 +19,7 @@
     #endif // USE_BUZZER
 
     #ifdef USE_OLED
-      #include <md_oled.h>
+      #include "md_oled.h"
     #endif // USE_OLED
 
     #ifdef USE_KEYPADSHIELD
@@ -31,12 +31,12 @@
     #endif
 
     #ifdef USE_FRAM_32K_I2C
-      #include "md_FRAM.h"
+      #include <md_FRAM.h>
     #endif
   //
   // --- network
     #ifdef USE_WIFI
-      #include "md_webserver.h"
+      #include <md_webserver.h>
     #endif
   //
   // --- sensors

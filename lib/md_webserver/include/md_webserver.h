@@ -5,8 +5,8 @@
   #include <WiFiUdp.h>
   #include <WebServer.h>
   #include <ESPmDNS.h>
-  #include "config.h"
-  #include "md_util.h"
+  #include <config.h>
+  #include <md_util.h>
 
   class md_wifi
   {

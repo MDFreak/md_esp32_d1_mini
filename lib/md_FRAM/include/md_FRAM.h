@@ -11,13 +11,25 @@
 // see FRAM.cpp file
 //
 
-#include "Arduino.h"
-#include "Wire.h"
+#include <Arduino.h>
+#include <Wire.h>
 
 #define FRAM_LIB_VERSION (F("0.2.1"))
 
 #define FRAM_OK               0
 #define FRAM_ERROR_ADDR       -10
+
+#define FRAM_STAT_ISINIT  1
+
+// format FRAM data organisation
+  #define FRAM_ADDR_LEN   2   // 16 bit
+  // header 16 bytes
+    #define FRAM_ADDR_STAT  0x0000
+    #define FRAM_ADDR_VERS  FRAM_ADDR_STAT + FRAM_ADDR_LEN
+    #define FRAM_ADDR_NEXT  FRAM_ADDR_VERS + FRAM_ADDR_LEN
+    #define FRAM_ADDR_LAST  FRAM_ADDR_VERS + FRAM_ADDR_LEN
+  // static organisation
+    #define FRAM_ADDR_START 0x0010
 
 class FRAM
 {

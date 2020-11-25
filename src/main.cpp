@@ -550,10 +550,10 @@
                     else
                       {
                         SOUT("initializing next addr ");
-                        fram.write8(FRAM_ADDR_STAT, FRAM_STAT_ISINIT);
-                        fram.write8(FRAM_ADDR_VERS, FRAM_STAT_ISINIT);
-                        fram.write16(FRAM_ADDR_DATA_NEXT,FRAM_ADDR_DATA_START);
-                        SOUTHEX(FRAM_ADDR_DATA_START);
+                        fram.write8 (FRAM_ADDR_STAT, FRAM_STAT_ISINIT);
+                        fram.write8 (FRAM_ADDR_VERS, FRAM_STAT_ISINIT);
+                        fram.write16(FRAM_ADDR_NEXT,FRAM_ADDR_START);
+                        SOUTHEX(FRAM_ADDR_START);
                       }
 
                     // dump the entire 32K of memory!
