@@ -5,7 +5,7 @@
   #include <WiFiUdp.h>
   #include <WebServer.h>
   #include <ESPmDNS.h>
-  //#include <config.h>
+  #include <md_defines.h>
   #include <md_util.h>
 
   #define WIFI_OK   false
@@ -19,7 +19,7 @@
     LOCIP_OK   = LOCIP_IP | LOCIP_GW | LOCIP_SN
   };
 
-  typedef const char* LoginTxt_t[14];
+  typedef char LoginTxt_t[14];
 
   class md_localIP
   {
@@ -49,7 +49,7 @@
       bool initNTPTime(uint8_t summer);
     protected:
       uint64_t sendNTPpacket(IPAddress& address);
-      uint8_t  _summer = 0;
+      uint8_t  _timezone = 0;
   };
 
   class md_wifi: public md_localIP, public md_NTPTime

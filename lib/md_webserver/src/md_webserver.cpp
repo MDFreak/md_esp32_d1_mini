@@ -216,7 +216,7 @@
   // ------ class md_NTPTime --------------------------
     bool md_NTPTime::initNTPTime(uint8_t summer)
       {
-        _summer = summer;
+        _timezone = 1 + summer;
         udp.begin(localPort);
         return WIFI_OK;
       }
@@ -243,7 +243,7 @@
 
                   const unsigned long seventyYears = 2208988800UL;
                   //unsigned long epoch = secsSince1900 - seventyYears;
-                  *ntpEpoche = secsSince1900 - seventyYears + _summer * 3600;
+                  *ntpEpoche = secsSince1900 - seventyYears + _timezone * 3600;
                   return WIFI_OK;
                 }
             }
@@ -301,23 +301,10 @@
       {
                 Serial.println();
                 Serial.print(millis()); Serial.print(" initWIFI .. ");
-        if (_stat == LOCIP_OK)
-          {
-            //setLocIP();
-            WiFi.mode(WIFI_STA);
-            _lenlist  = anz;
-            _pssidlist = ssids;
-            _ppwlist   = pws;
-            /*
-            if ( WiFi.config(_locip, _gateip, _subnet ) == false) //, primaryDNS, secondaryDNS
-            {
-                    #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                      Serial.println("STA Failed to configure -> exit");
-                    #endif
-              return WIFI_ERR;
-            }
-            */
-          }
+        WiFi.mode(WIFI_STA);
+        _lenlist  = anz;
+        _pssidlist = ssids;
+        _ppwlist   = pws;
         WiFi.onEvent(WiFiEvent); // start interrupt handler
         _isinit = true;
               Serial.println(" OK");
@@ -336,27 +323,28 @@
         _locip   = (uint32_t) 0;
         _gateip  = (uint32_t) 0;
         _subnet  = (uint32_t) 0;
-                Serial.println();
-                Serial.print(millis()); Serial.println(" WIFI scan");
+                SOUTLN();
+                SOUT(millis()); SOUTLN(" WIFI scan");
         usleep(10000);
 
         // WiFi.scanNetworks will return the number of networks found
         int n = WiFi.scanNetworks();
         if (n == 0)
         {
-                Serial.println("no networks found");
+                SOUTLN("no networks found");
         }
         else
         {
-                  Serial.print(n); Serial.println(" networks found");
+                  SOUT(n); SOUTLN(" networks found");
           uint8_t s = 0;
           for (uint8_t i = 0; i < n; ++i)
           {
             // Print SSID and RSSI for each network found
-                    Serial.print(i + 1);
+                    SOUT(i + 1);
             for ( s = 0; s < _lenlist ; s++ )
               {
-                if (strcmp(WiFi.SSID(i).c_str(), *_pssidlist[s]) == 0)
+                       //SOUT(" "); SOUT(_pssidlist[s]);
+                if (strcmp(WiFi.SSID(i).c_str(), _pssidlist[s]) == 0)
                   {
                     memcpy(_ssid, _pssidlist[s], sizeof(LoginTxt_t)) ;
                     memcpy(_passw, _ppwlist[s], sizeof(LoginTxt_t)) ;
@@ -372,16 +360,16 @@
               }
             if ( s >= _lenlist)
               {
-                    Serial.print("       ");
+                    SOUT("       ");
               }
-                    Serial.print(WiFi.SSID(i));
-                    Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
-                    Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+                    SOUT(WiFi.SSID(i));
+                    SOUT(" ("); SOUT(WiFi.RSSI(i)); Serial.print(")");
+                    SOUTLN((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
             usleep(10000);
           }
         }
       //  WiFi.disconnect();
-        if (strlen(*_ssid) > 0) { return WIFI_OK; }
+        if (strlen(_ssid) > 0) { return WIFI_OK; }
         else                    { return WIFI_ERR; };
       }
 
@@ -389,14 +377,14 @@
       {
                 Serial.print(millis());
                 Serial.println(" md_startWIFI");
-        if (strlen(*_ssid) == 0)
+        if (strlen(_ssid) == 0)
           { // keine SSID
                     Serial.print(millis());
                     Serial.println(" SSID nicht initialisiert ");
             return WIFI_ERR;
           }
 
-        WiFi.begin(*_ssid, *_passw); // start connection
+        WiFi.begin(_ssid, _passw); // start connection
         Serial.println(""); Serial.println(millis());
 
         // Wait for connection

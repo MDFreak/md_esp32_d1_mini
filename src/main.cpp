@@ -51,15 +51,28 @@
 
     #ifdef USE_OLED
         #ifdef OLED1
-            md_oled oled1 = md_oled(1, DISP1_MAXCOLS, DISP1_MAXROWS);
-          #endif
-        #ifdef OLED2
-//            md_oled oled2 = md_oled(2, DISP2_MAXCOLS, DISP2_MAXROWS);
-            #if !(OLED2_GEO ^ GEOMETRY_128_32)
-              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_32);
+            #if !(OLED1_GEO ^ GEO_128_32)
+              md_oled oled1 = md_oled((uint8_t) OLED2_I1C_ADDR, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C1_SCL, GEOMETRY_128_32);
+            #endif
+            #if !(OLED1_GEO ^ GEO_128_64)
+              md_oled oled1 = md_oled((uint8_t) OLED2_I1C_ADDR, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_128_64);
+            #endif
+            #if !(OLED1_GEO ^ GEO_RAWMODE)
+              md_oled oled1 = md_oled((uint8_t) OLED2_I1C_ADDR, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_RAWMODE);
             #endif
           #endif
-        //      msTimer     oledT      = msTimer(DISP_CYCLE);
+        #ifdef OLED2
+            #if !(OLED2_GEO ^ GEO_128_32)
+              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_32);
+            #endif
+            #if !(OLED2_GEO ^ GEO_128_64)
+              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_64);
+            #endif
+            #if !(OLED2_GEO ^ GEO_RAWMODE)
+              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_RAWMODE);
+            #endif
+          #endif
+        msTimer oledT   = msTimer(DISP_CYCLE);
         uint8_t oledIdx = 0;
       #endif //USE_OLED
 
@@ -360,7 +373,7 @@
           #if defined(USE_LOCAL_IP)
               wifi.setIPList(locIP);
             #endif
-          bool ret = wifi.initWIFI(&wifiSSID[0], &wifiPW[0], (uint8_t) WIFI_ANZ_LOCIP);
+          bool ret = wifi.initWIFI(&wifiSSID[0], &wifiPW[0], (uint8_t) WIFI_ANZ_LOGIN);
                   #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                     SOUT(millis()); SOUT(" initWIFI ret="); SOUTLN(ret);
                   #endif
@@ -432,7 +445,7 @@
     #ifdef USE_NTP_SERVER
       void initNTPTime()
         {
-          bool ret = wifi.initNTP(MD_SUMMER);
+          bool ret = wifi.initNTP(UTC_SEASONTIME);
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                   Serial.print("initNTPTime ret="); Serial.print(ret);
                 #endif

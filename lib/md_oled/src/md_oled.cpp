@@ -1,27 +1,5 @@
 #include "md_oled.h"
 
-//#ifdef USE_OLED
-
-  #if defined(NC_OLED1)
-      #if (OLED1 == DISP_OLED_091_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, OLED1_I2C_SDA, OLED1_I2C_SCL, GEOMETRY_128_32);
-      #elif (OLED1 == DISP_OLED_096_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, OLED1_I2C_SDA, OLED1_I2C_SCL, GEOMETRY_128_64);
-      #elif (OLED1 == DISP_OLED_130_AZ_3V3)
-          SSD1306Wire _oled1 = SSD1306Wire(OLED1_I2C_ADDR, OLED1_I2C_SDA, OLED1_I2C_SCL, GEOMETRY_128_64);
-        #endif
-    #endif
-
-  #if defined(NC_OLED2)
-      #if (OLED2 == DISP_OLED_091_AZ_3V3)
-          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, OLED2_I2C_SDA, OLED2_I2C_SCL, GEOMETRY_128_32);
-      #elif (OLED2 == DISP_OLED_096_AZ_3V3)
-          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, OLED2_I2C_SDA, OLED2_I2C_SCL, GEOMETRY_128_64);
-      #elif (OLED2 == DISP_OLED_130_AZ_3V3)
-          SSD1306Wire _oled2 = SSD1306Wire(OLED2_I2C_ADDR, OLED2_I2C_SDA, OLED2_I2C_SCL, GEOMETRY_128_64);
-        #endif
-    #endif
-
   //
   bool md_oled::begin(uint8_t cols, uint8_t rows)
     {
@@ -415,4 +393,3 @@
             u8g2.sendBuffer();
       }
   #endif
-//#endif

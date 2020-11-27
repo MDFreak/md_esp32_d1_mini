@@ -7,14 +7,10 @@
   #define PROJ_TITLE "   ESP32 TEST"
 
   // --- serial connection
-    #define SER_BAUDRATE     115200ul
-    enum OLED_GEOMETRY
-      {
-        GEO_128_64   = 0,
-        GEO_128_32,
-        GEO_RAWMODE,
-      };
-
+    #define SER_BAUDRATE  115200ul
+    #define GEO_128_64    0
+    #define GEO_128_32    1
+    #define GEO_RAWMODE   2
 
   //
   // --- debugging selection
@@ -61,8 +57,8 @@
                     //#define OLED2 MC_UO_OLED_096_AZ
                     #define OLED2 MC_UO_OLED_130_AZ
 
-                    #define OLED2_GEO  GEO_128_32
-                    //#define OLED2_GEO  GEO_128_64
+                    //#define OLED2_GEO  GEO_128_32
+                    #define OLED2_GEO  GEO_128_64
                     //#define OLED2_GEO  GEO_RAWMODE
                   #endif //USE_OLED
 
@@ -86,7 +82,7 @@
       //
       // --- sensors
         // --- temperature, humidity ...
-          //#define USE_DS18B20
+          #define USE_DS18B20
 
       //
       // --- memories
@@ -187,12 +183,14 @@
         #define ERRBIT_NTPTIME   0x00000008     // NTP timeserver connection
       //
       // --- generic
+        #define SCAN_IIC   128
+        #define CHECK_I2C_DEVICES
+        #define UTC_SEASONTIME UTC_WINTERTIME
+        //#define UTC_SEASONTIME UTC_SUMMERTIME
         #ifdef USE_TASKING
             #define USE_SONGTASK
             #define TASK_SLICE_T  5000ul   // task beat [us]
           #endif // USE_TASKING
-        #define SCAN_IIC   128
-        #define CHECK_I2C_DEVICES
     //
     // --- user interface
       // --- display output
@@ -203,7 +201,7 @@
     // --- network
       // --- WIFI
         #if defined(USE_WIFI)
-                //#define USE_NTP_SERVER
+            #define USE_NTP_SERVER
             #define WIFI_ANZ_LOGIN  3
             #define WIFI_SSID0      "MAMD-HomeG" // WLAN Moosgrabenstrasse 26
             #define WIFI_SSID0_PW   "ElaNanniRalf3"
