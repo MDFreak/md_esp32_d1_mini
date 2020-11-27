@@ -155,13 +155,13 @@
         _isfree  = false;
         _beatfac = beat_us / MUSIC_BASEBEAT_US;
               Serial.println(" ok");
-        return MDOK;
+        return ISOK;
       }
       else
       {
               Serial.println(" ERR Occupied");
       }
-      return MDERR;
+      return ISERR;
     }
 
 //

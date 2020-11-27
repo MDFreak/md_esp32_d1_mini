@@ -6,7 +6,7 @@
   #include <TimeLib.h>
   //#include <Print.h>
   //#include <SPI.h>
-  #include "config.h"
+  #include <prj_config.h>
   #include <md_util.h>
 
   // --- user interface

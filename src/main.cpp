@@ -2,37 +2,39 @@
 
 // --- declarations
   // ------ system -----------------------
-    #define CHECK_ERRORS
-    #ifdef CHECK_ERRORS
-      uint16_t     md_error  = 0    // Error-Status bitkodiert -> 0: alles ok
-                               #ifdef USE_WIFI
-                                 + ERRBIT_WIFI
-                                 #ifdef USE_NTP_SERVER
-                                   + ERRBIT_NTPTIME
-                                 #endif
+    uint16_t     md_error  = 0    // Error-Status bitkodiert -> 0: alles ok
+                             #ifdef USE_WIFI
+                               + ERRBIT_WIFI
+                               #ifdef USE_NTP_SERVER
+                                 + ERRBIT_NTPTIME
                                #endif
-                               #ifdef USE_WEBSERVER
-                                 + ERRBIT_SERVER
-                               #endif
-                               #ifdef USE_TOUCHSCREEN
-                                 + ERRBIT_TOUCH
-                               #endif
-                               ;
-    #endif
+                             #endif
+                             #ifdef USE_WEBSERVER
+                               + ERRBIT_SERVER
+                             #endif
+                             #ifdef USE_TOUCHSCREEN
+                               + ERRBIT_TOUCH
+                             #endif
+                             ;
 
-    msTimer       dispT  = msTimer(DISP_CYCLE);
-    uint32_t      ze     = 1;      // aktuelle Schreibzeile
-    char          outBuf[DISP1_MAXCOLS + 1] = "";
-    String        outStr;
+    #ifdef USE_DISP
+        msTimer       dispT  = msTimer(DISP_CYCLE);
+        uint32_t      ze     = 1;      // aktuelle Schreibzeile
+        char          outBuf[DISP1_MAXCOLS + 1] = "";
+        String        outStr;
+      #endif
+
     #ifdef SCAN_IIC
       uint8_t       devIIC[ANZ_IIC][SCAN_IIC];
       #endif
+
     #ifdef USE_STATUS
       msTimer     statT  = msTimer(STAT_TIMEDEF);
       char        statOut[DISP1_MAXCOLS + 1] = "";
       bool        statOn = false;
       //char        timeOut[STAT_LINELEN + 1] = "";
       #endif
+
   // ------ user interface ---------------
     #ifdef USE_TOUCHSCREEN
         md_touch touch = md_touch();
@@ -52,7 +54,10 @@
             md_oled oled1 = md_oled(1, DISP1_MAXCOLS, DISP1_MAXROWS);
           #endif
         #ifdef OLED2
-            md_oled oled2 = md_oled(2, DISP2_MAXCOLS, DISP2_MAXROWS);
+//            md_oled oled2 = md_oled(2, DISP2_MAXCOLS, DISP2_MAXROWS);
+            #if !(OLED2_GEO ^ GEOMETRY_128_32)
+              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_32);
+            #endif
           #endif
         //      msTimer     oledT      = msTimer(DISP_CYCLE);
         uint8_t oledIdx = 0;
@@ -65,17 +70,52 @@
       #endif
   // ------ network ----------------------
     #ifdef USE_WIFI
-      msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
+        LoginTxt_t wifiSSID[WIFI_ANZ_LOGIN] =
+                    {
+                      { WIFI_SSID0 }
+                      #if (WIFI_ANZ_LOGIN > 1)
+                        , { WIFI_SSID1 }
+                        #endif
+                      #if (WIFI_ANZ_LOGIN > 2)
+                        , { WIFI_SSID2 }
+                        #endif
+                      #if (WIFI_ANZ_LOGIN > 3)
+                        , { WIFI_SSID3 }
+                        #endif
+                      #if (WIFI_ANZ_LOGIN > 4)
+                        , { WIFI_SSID4 }
+                        #endif
+                    };
+        LoginTxt_t wifiPW[WIFI_ANZ_LOGIN] =
+                    {
+                      { WIFI_SSID0_PW }
+                      #if (WIFI_ANZ_LOGIN > 1)
+                        , { WIFI_SSID1_PW }
+                        #endif
+                      #if (WIFI_ANZ_LOGIN > 2)
+                        , { WIFI_SSID2_PW }
+                        #endif
+                      #if (WIFI_ANZ_LOGIN > 3)
+                        , { WIFI_SSID3_PW }
+                        #endif
+                      #if (WIFI_ANZ_LOGIN > 4)
+                        , { WIFI_SSID4_PW }
+                        #endif
+                    };
+        md_wifi wifi  = md_wifi();
+        msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
+        #if defined(USE_LOCAL_IP)
+            md_localIP locIP[WIFI_ANZ_LOGIN];
+          #endif
+        #if defined(USE_NTP_SERVER)
+            msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
+            time_t  ntpTime = 0;
+            bool    ntpGet  = true;
+          #endif // USE_WEBSERVER
       #endif
 
-    #ifdef USE_WEBSERVER
-      msTimer servT = msTimer(WEBSERVER_CYCLE);
-      #endif // USE_WEBSERVER
-
-    #ifdef USE_NTP_SERVER
-      msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
-      time_t  ntpTime = 0;
-      bool    ntpGet  = true;
+    #if defined(USE_WEBSERVER)
+        msTimer servT = msTimer(WEBSERVER_CYCLE);
       #endif // USE_WEBSERVER
 
   // ------ sensors ----------------------
@@ -264,28 +304,32 @@
         void startDisp()
           {
             #ifdef USE_DISP
-              #ifdef USE_STATUS
-                statOut[DISP1_MAXCOLS] = 0;  // limit strlen
-                #endif
-              #if defined(USE_TFT)
-                mlcd.start(plcd);
-                #endif
-              #if defined(USE_TOUCHXPT2046_AZ_3V3)
-                bool ret = touch.startTouch();
-                      #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                        SOUT("startTouch ret="); SOUT(ret);
-                      #endif
-                md_error = setBit(md_error, ERRBIT_TOUCH, ret);
-                      #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                        SOUT("  md_error="); SOUTLN(md_error);
-                      #endif
-                #endif
-              #if defined (OLED1)
-                  oled1.begin();
-                #endif
-              #if defined (OLED2)
-                  oled2.begin();
-                #endif
+                #ifdef USE_STATUS
+                  statOut[DISP1_MAXCOLS] = 0;  // limit strlen
+                  #endif
+                //
+                #if defined(USE_TFT)
+                  mlcd.start(plcd);
+                  #endif
+                //
+                #if defined(USE_TOUCHXPT2046_AZ_3V3)
+                  bool ret = touch.startTouch();
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                          SOUT("startTouch ret="); SOUT(ret);
+                        #endif
+                  md_error = setBit(md_error, ERRBIT_TOUCH, ret);
+                        #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                          SOUT("  md_error="); SOUTLN(md_error);
+                        #endif
+                  #endif
+                //
+                #if defined (OLED1)
+                    oled1.begin(GEOMETRY_128_32);
+                  #endif
+                //
+                #if defined (OLED2)
+                    oled2.begin((uint8_t) DISP2_MAXCOLS, (uint8_t) DISP2_MAXROWS);
+                  #endif
               #endif
           }
     // --- user input
@@ -296,7 +340,7 @@
                 kpad.init(KEYS_ADC);
               #endif // USE_KEYPADSHIELD
           }
-
+        //
         uint8_t getKey()
           {
             #if defined(USE_KEYPADSHIELD)
@@ -308,55 +352,32 @@
     // --- sensors
       // --- DS18B20
         void getDS18D20Str(String outS);
-  // ------ NTP server -------------------
-    #ifdef USE_NTP_SERVER
-      void initNTPTime()
-        {
-          bool ret = wifiMD.md_initNTPTime();
-                #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                  Serial.print("initNTPTime ret="); Serial.print(ret);
-                #endif
-          md_error = setBit(md_error, ERRBIT_NTPTIME, ret);
-                #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                  Serial.print("  md_error="); Serial.println(md_error);
-                #endif
-          if ((md_error & ERRBIT_WIFI) == 0)
-            {
-              dispStatus("NTPTime ok");
-            }
-            else
-            {
-              dispStatus("NTPTime error");
-            }
-        }
-      #endif // USE_NTP_SERVER
-
   // ------ WIFI -------------------------
-    #ifdef USE_WIFI
+    #if defined(USE_WIFI)
       void startWIFI()
         {
-          #ifdef USE_TOUCHSCREEN
-            while (touch.wrStatus("  start WIFI"));
-          #endif
-          wifiMD.setLocIP();
-          bool ret = wifiMD.md_initWIFI();
+          dispStatus("  start WIFI");
+          #if defined(USE_LOCAL_IP)
+              wifi.setIPList(locIP);
+            #endif
+          bool ret = wifi.initWIFI(&wifiSSID[0], &wifiPW[0], (uint8_t) WIFI_ANZ_LOCIP);
                   #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                     SOUT(millis()); SOUT(" initWIFI ret="); SOUTLN(ret);
                   #endif
-          if (ret == MDOK)
-          {
-            ret = wifiMD.md_scanWIFI();
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
-                  #endif
-          }
-          if (ret == MDOK)
-          {
-            ret = wifiMD.md_startWIFI();
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    SOUT("startWIFI ret="); SOUT(ret);
+          if (ret == ISOK)
+            {
+              ret = wifi.scanWIFI();
+                    #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                      SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
                     #endif
-          }
+            }
+          if (ret == ISOK)
+            {
+              ret = wifi.startWIFI();
+                    #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                      SOUT("startWIFI ret="); SOUT(ret);
+                      #endif
+            }
           md_error = setBit(md_error, ERRBIT_WIFI, ret);
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                   SOUT("  md_error="); SOUTLN(md_error);
@@ -366,18 +387,19 @@
               dispStatus("WIFI connected");
             else
               dispStatus("WIFI error");
+
           #ifdef USE_NTP_SERVER
             if((md_error & ERRBIT_WIFI) == 0) // WiFi ok
                 if((md_error & ERRBIT_NTPTIME) != 0) // WiFi ok
-                  initNTPTime();
+                  wifi.initNTP(0);
             #endif
         }
       #endif // USE_WIFI
-
+    //
     #ifdef USE_WEBSERVER
       void startWebServer()
         {
-          bool ret = MDERR;
+          bool ret = ISERR;
           if ((md_error & ERRBIT_SERVER) != 0)
             {
               dispStatus("start webserver");
@@ -406,12 +428,35 @@
       #endif // USE_WEBSERVER
 
 
+  // ------ NTP server -------------------
+    #ifdef USE_NTP_SERVER
+      void initNTPTime()
+        {
+          bool ret = wifi.initNTP(MD_SUMMER);
+                #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                  Serial.print("initNTPTime ret="); Serial.print(ret);
+                #endif
+          md_error = setBit(md_error, ERRBIT_NTPTIME, ret);
+                #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+                  Serial.print("  md_error="); Serial.println(md_error);
+                #endif
+          if ((md_error & ERRBIT_WIFI) == 0)
+            {
+              dispStatus("NTPTime ok");
+            }
+            else
+            {
+              dispStatus("NTPTime error");
+            }
+        }
+      #endif // USE_NTP_SERVER
+
   // ------ passive buzzer --------------
     #ifdef PLAY_MUSIC
       tone_t test = {0,0,0};
       void playSong(int8_t songIdx)
         {
-          if (buzz.setSong(SONG0_LEN,(void*) SONG0_NOTES) == MDOK)
+          if (buzz.setSong(SONG0_LEN,(void*) SONG0_NOTES) == ISOK)
             {
               #ifndef USE_SONGTASK
                 buzz.playSong();
@@ -432,16 +477,18 @@
               #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
                 SOUTLN(); SOUTLN("setup start ...");
               #endif
+
           #ifdef SCAN_IIC
             uint8_t addr = 0;
             // reset array
             for ( n= 0 ; n < ANZ_IIC ; n++)
               for (uint8_t i=0 ; i < SCAN_IIC ; i++)
                 devIIC[n][i] = 0;
+
             // check I2C1 for devices
             while (addr < SCAN_IIC)
               {
-                addr = scanIIC(1, addr, I2C1_SDA, I2C1_SCL);
+                addr = scanIIC(1, addr, PIN_I2C1_SDA, PIN_I2C1_SCL);
                 if ((0 < addr) && (addr < SCAN_IIC))
                   {
                     devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
@@ -450,6 +497,7 @@
                   }
               }
             sleep(1);
+
             #ifdef I2C2_SDA
               addr = 0;
               while (addr < SCAN_IIC)
@@ -465,6 +513,7 @@
               sleep(1);
               #endif
             #endif
+      //
       // --- user interface
         // start display - output to user
           startDisp();
@@ -473,15 +522,16 @@
           startKeys();
         // start buzzer (task)
           #ifdef USE_BUZZER
-            pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
-            #ifdef PLAY_MUSIC
-              buzz.initMusic();
-              #ifdef PLAY_START_MUSIC
-                playSong();
+              pinMode(PIN_BUZZ, OUTPUT);                                                                               // Setting pin 11 as output
+              #ifdef PLAY_MUSIC
+                buzz.initMusic();
+                #ifdef PLAY_START_MUSIC
+                  playSong();
+                #endif
               #endif
             #endif
-          #endif
 
+      //
       // --- network
         // start WIFI
           #ifdef USE_WIFI
@@ -495,6 +545,7 @@
                 dispStatus("WIFI error");
               }
             #endif // USE_WIFI
+      //
       // --- sensors
         // temp. sensor DS18D20
           #ifdef USE_DS18B20
@@ -504,6 +555,7 @@
                 dispStatus(outStr);
                     SOUTLN(outStr);
             #endif
+      //
       // --- memories
         // FRAM
           #ifdef USE_FRAM_32K_I2C  // NIO funktioniert nicht
@@ -589,6 +641,7 @@
                     SOUT("  ManuID 0x"); Serial.println(manuID, HEX);
               */
             #endif
+      //
       // --- finish setup
           #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
               SOUTLN();
@@ -629,7 +682,7 @@
                 }
               if (ntpGet == true)
                 {
-                  ntpGet = wifiMD.md_getTime(&ntpTime);
+                  ntpGet = wifi.getNTPTime(&ntpTime);
                   setTime(ntpTime);
                 }
             }

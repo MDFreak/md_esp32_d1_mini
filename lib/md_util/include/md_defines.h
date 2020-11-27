@@ -6,9 +6,15 @@
     #define CFG_DEFS
     //
     // --- generic
-      #define NN  -1  // not used
-      #define OFF  0  // not active
-      #define ON   1  // active
+      #define NN      -1  // not used
+      #define OFF      0  // not active
+      #define ON       1  // active
+
+      #define TRUE     1
+      #define FALSE    0
+
+      #define ISERR   TRUE   // function call
+      #define ISOK    FALSE
 
       #define CR   13 // carrige return
       #define LF   10 // line feed
@@ -17,50 +23,87 @@
       #define U5V   5
 
       #define NOKEY 0
+
+      #define UTC_TIMEZONE      3600           // +1 hour
+      #define UTC_SUMMERTIME    1
+      #define UTC_WINTERTIME    0
+
     //
     // --- macros
-      #define SET(b)    (b = true)
-      #define RESET(b)  (b = false)
+      #define SET(b)      (b = true)
+      #define RESET(b)    (b = false)
 
-      #define SOUT(c)   (Serial.print(c))
-      #define SOUTHEX(c)(Serial.print(c, HEX))
-      #define SOUTLN(c) (Serial.println(c))
+      #define SOUT(c)     (Serial.print(c))
+      #define SOUTHEX(c)  (Serial.print(c, HEX))
+      #define SOUTLN(c)   (Serial.println(c))
+      #define SOUTHEXLN(c)(Serial.println(c, HEX))
     //
+    //
+    // --- MC_: 16 bit coded numbering of controller and periferal boards
+      //bin xx xxxx xxxxxx xxxx
+      //    || |||| |||||| ++++ individual number (type spezific)
+      //    || |||| |||||| ---- module type
+      //    || |||| |||||+ user output (optical, acustic)
+      //    || |||| ||||+  user input  (grafical/text, acustic, keys)
+      //    || |||| |||+   periferal input  (sensor)
+      //    || |||| ||+    periferal output (relay)
+      //    || |||| |+     system / interface
+      //    || |||| +      reserved
+      //    || |||| ---- controller family
+      //    || |||+ STM32
+      //    || ||+  ESP32
+      //    || |+   ESP8266
+      //    || +    Arduino
+      //    || ---- voltage used
+      //    |+ 5 V
+      //    +  3.3 V
+
     // --- voltage defines
-        #define  U_3V5V  0x00  // 0x00-0x3F  3V3 & 5V tolerant
-        #define  U_5V    0x40  // 0x40-0x7F  5V
-        #define  U_3V3   0x80  // 0x80-0xBF  3V3
-        #define  U_ERR   0xC0  // U_5V | U_3V3
+      #define  MC_PW_3V3   0x8000
+      #define  MC_PW_5V    0x4000
+      #define  MC_PW       0xa000 // mask for voltage
+
+    // --- controller types
+      #define  MC_UC_AV       0x2000 // arduino
+      #define  MC_UC_ESP8266  0x1000 // ESP8266
+      #define  MC_UC_ESP32    0x0800 // ESP32
+      #define  MC_UC_STM      0x0400 // STM32
+      #define  MC_UC          0x3c00 // mask for 'is controller
+
+    // --- module types
+      #define MC_MOD_RES      0x0200 // reserved
+      #define MC_MOD_SYS      0x0100 // system internal or interface
+      #define MC_MOD_POUT     0x0080 // periferal output
+      #define MC_MOD_PIN      0x0040 // periferal input
+      #define MC_MOD_UOUT     0x0020 // user output
+      #define MC_MOD_UIN      0x0010 // user input
+
+    // --- controller boards
+      // --- arduino boards
+        #define  MC_AV_NANO_V3    0x0003 + MC_PW_5V + MC_UC_AV
+        #define  MC_AV_UNO_V3     0x0007 + MC_PW_5V + MC_UC_AV
+        #define  MC_AV_MEGA_V3    0x000f + MC_PW_5V + MC_UC_AV
+      // --- ESP32 boards
+        #define  MC_ESP_DUAL      0x0008 // dual core controller
+        #define  MC_ESP32S_Node   0x0000 +               MC_PW_3V3 + MC_UC_ESP32 + MC_MOD_SYS
+        #define  MC_ESP32_Node    0x0001 + MC_ESP_DUAL + MC_PW_3V3 + MC_UC_ESP32 + MC_MOD_SYS
+        #define  MC_ESP32_D1_R32  0x0002 +               MC_PW_3V3 + MC_UC_ESP32 + MC_MOD_SYS
+        #define  MC_ESP32_LORA    0x0003 + MC_ESP_DUAL + MC_PW_3V3 + MC_UC_ESP32 + MC_MOD_SYS
     //
-    // --- boards
-      // --- 3V3 & 5V tolerant boards     0x00 - 0x3F = 0 - 63
-      // --- 5V boards                    0x40 - 0x7F = 64 - 127
-        #define  BRD_ARD_NANO_V3_AZ_V5    U_5V   + 0
-        #define  BRD_ARD_UNO_V3_AZ_V5     U_5V   + 1
-      // --- 3.3V boards                  0x80 - 0xBF = 128 - 191
-        #define  BRD_ESP32S_Node_AZ_3V3   U_3V3  + 0
-        #define  BRD_ESP32_Node_AZ_3V3    U_3V3  + 1
-        #define  BRD_ESP32_D1_R32_AZ_3V3  U_3V3  + 2
+    // --- displays
+      // --- TFT displays
+        #define  MC_UO_TFT1602_IIC_XA   0x0000 + MC_MOD_UOUT + MC_PW_3V3
+        #define  MC_UO_TFT1602_GPIO_RO  0x0001 + MC_MOD_UOUT + MC_PW_3V3 + MC_PW_5V  // used by KEYPADSHIELD
+        #define  MC_UO_TOUCHXPT2046_AZ  0x0002 + MC_MOD_UOUT + MC_PW_3V3 // used by Arduino-touch-case
+      // --- OLED displays
+        #define  MC_UO_OLED_091_AZ      0x0008 + MC_MOD_UOUT + MC_PW_3V3 // IIC adress 0x3C
+        #define  MC_UO_OLED_096_AZ      0x0008 + MC_MOD_UOUT + MC_PW_3V3
+        #define  MC_UO_OLED_130_AZ      0x0008 + MC_MOD_UOUT + MC_PW_3V3
+
     //
-    // --- displays - values not used
-      // --- 3V3 & 5V tolerant displays   0x00 - 0x3F = 0 - 63
-        #define  DISP_TFT1602_IIC_XA_3V3  U_3V3  + 0
-      // --- 5V  displays                 0x40 - 0x7F = 64 - 127
-        #define  DISP_TFT1602_GPIO_RO_V5  U_5V   + 0  // used by KEYPADSHIELD
-      // --- 3V3 displays                 0x80 - 0xBF = 128 - 191
-        #define  DISP_TFT1602_GPIO_RO_3V3 U_3V3  + 0  // used by KEYPADSHIELD
-        #define  DISP_OLED_091_AZ_3V3     U_3V3  + 1  // IIC adress 0x3C
-        #define  DISP_OLED_096_AZ_3V3     U_3V3  + 2
-        #define  DISP_OLED_130_AZ_3V3     U_3V3  + 3
-        #define  DISP_TOUCHXPT2046_AZ_3V3 U_3V3  + 4  // used by Arduino-touch-case
-    //
-    // --- key parts
-      // --- 3V3 & 5V tolerant key parts  0x00 - 0x3F = 0 - 63
-      // --- 5V key parts                 0x40 - 0x7F = 64 - 127
-        #define  KEYS_Keypad_ANA0_RO_V5   U_5V  + 0  // used by KEYPADSHIELD
-      // --- 3V3 key parts                0x80 - 0xBF = 128 - 191
-        #define  KEYS_Keypad_ANA0_RO_3V3  U_3V3 + 0  // used by KEYPADSHIELD
-        #define  KEYS_TOUCHXPT2046_AZ_3V3 U_3V3 + 4  // used by Arduino-touch-case
+    // --- user input parts
+        #define  MC_UI_Keypad_ANA0_RO   0x0000 + MC_MOD_UIN + MC_PW_3V3 + MC_PW_5V // used by KEYPADSHIELD
+        #define  MC_UI_TOUCHXPT2046_AZ  0x0002 + MC_MOD_UIN + MC_PW_3V3  // used by Arduino-touch-case
 
     // --- active outputs
       // --- 3V3 & 5V tolerant outputs    0x00 - 0x3F = 0 - 63

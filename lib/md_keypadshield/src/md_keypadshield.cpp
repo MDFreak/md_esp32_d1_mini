@@ -35,7 +35,7 @@
     {
       _adc = keysAdc;
       pinMode(_adc,ANALOG);
-      return MDOK;
+      return ISOK;
     }
 
   uint8_t md_kpad::getKey()

@@ -1,39 +1,17 @@
-#include "md_webserver.h"
+#include <md_webserver.h>
 
 // --- declaration
-  // --- WIFI ---------------------------
-    const char* ssidMAMD  = WIFI_MAMD_SSID;
-    const char* ssidHM    = WIFI_HM_SSID;
-    const char* ssidWL    = WIFI_WL_SSID;
-    const char* nossid    = NULL;
-    const char* passwMAMD = WIFI_MAMD_PW;
-    const char* passwHM   = WIFI_HM_PW;
-    const char* passwWL   = WIFI_WL_PW;
-
-    md_wifi   wifiMD  = md_wifi();
-
   //
   // --- webserver
     WebServer webServ(80);
     md_server webMD   = md_server();
-
-  // --- static IP address with gateway
-    #ifdef WIFI_LOCAL_IP
-      IPAddress locIP (WIFI_LOCIP3, WIFI_LOCIP2, WIFI_LOCIP1, WIFI_FIXIP);
-      IPAddress gateIP(WIFI_LOCIP3, WIFI_LOCIP2, WIFI_LOCIP1, WIFI_GATEWAY);
-      IPAddress subNET(WIFI_SUBNET3,WIFI_SUBNET2,WIFI_SUBNET1,WIFI_SUBNET0);
-    #endif
-
   //
   // --- NTP server ---------------------
-    #ifdef USE_NTP_SERVER
-      unsigned int localPort = 2390;
-      IPAddress    timeServer(129, 6, 15, 28);
-      const int    NTP_PACKET_SIZE = 48;
-      byte         packetBuffer[ NTP_PACKET_SIZE];
-      WiFiUDP      udp;
-    #endif
-
+    unsigned int localPort = 2390;
+    IPAddress    timeServer(129, 6, 15, 28);
+    const int    NTP_PACKET_SIZE = 48;
+    byte         packetBuffer[ NTP_PACKET_SIZE];
+    WiFiUDP      udp;
 //
 // --- callback functions
   //
@@ -53,30 +31,24 @@
                 break;
             case SYSTEM_EVENT_STA_START:
                 Serial.println("WiFi client started");
-                //wifiMD.setSSID(ON);
                 break;
             case SYSTEM_EVENT_STA_STOP:
                 Serial.println("WiFi clients stopped");
-                //wifiMD.setSSID(OFF);
                 break;
             case SYSTEM_EVENT_STA_CONNECTED:
                 Serial.println("Connected to access point");
-                //          wifiMD.setSSID(ON);
                 break;
             case SYSTEM_EVENT_STA_DISCONNECTED:
                 //Serial.print("Disconnected from WiFi status = "); Serial.println(WiFi.status());
-                //          wifiMD.setSSID(OFF);
                 break;
             case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
                 Serial.println("Authentication mode of access point has changed");
                 break;
             case SYSTEM_EVENT_STA_GOT_IP:
                 //Serial.print("Obtained IP address: "); Serial.println(WiFi.localIP());
-                //          wifiMD.setSSID(ON);
                 break;
             case SYSTEM_EVENT_STA_LOST_IP:
                 Serial.println("Lost IP address and IP address is reset to 0");
-                //          wifiMD.setSSID(OFF);
                 break;
             case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
                 Serial.println("WiFi Protected Setup (WPS): succeeded in enrollee mode");
@@ -226,50 +198,144 @@
 //
 // --- classes
   //
+  // ------ class md_localIP --------------------------
+    bool md_localIP::setIP(uint32_t ip)
+      {
+        _IP = ip;
+        _stat = _stat | LOCIP_IP;
+        return WIFI_OK;
+      }
+
+    bool md_localIP::setGW(uint32_t ip)
+      {
+        _IP = ip;
+        _stat = _stat | LOCIP_GW;
+        return WIFI_OK;
+      }
+  //
+  // ------ class md_NTPTime --------------------------
+    bool md_NTPTime::initNTPTime(uint8_t summer)
+      {
+        _summer = summer;
+        udp.begin(localPort);
+        return WIFI_OK;
+      }
+
+    bool md_NTPTime::getTime(time_t *ntpEpoche)
+      {
+        if (WiFi.status() == WL_CONNECTED)
+        {
+          sendNTPpacket(timeServer);
+          sleep(1);
+
+          int cb = udp.parsePacket();
+                Serial.print("parsePacket cb = "); Serial.println(cb);
+          if (cb > 0)
+            {
+              cb = udp.read(packetBuffer, NTP_PACKET_SIZE);
+                      Serial.print("read Packet cb = "); Serial.println(cb);
+              if (cb == NTP_PACKET_SIZE)
+                {
+                  unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+                  unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+
+                  unsigned long secsSince1900 = highWord << 16 | lowWord;
+
+                  const unsigned long seventyYears = 2208988800UL;
+                  //unsigned long epoch = secsSince1900 - seventyYears;
+                  *ntpEpoche = secsSince1900 - seventyYears + _summer * 3600;
+                  return WIFI_OK;
+                }
+            }
+        }
+        return WIFI_ERR;
+      }
+
+    uint64_t md_NTPTime::sendNTPpacket(IPAddress& address)
+      {
+        //Serial.println("sending NTP packet...");
+        // set all bytes in the buffer to 0
+        memset(packetBuffer, 0, NTP_PACKET_SIZE);
+        // Initialize values needed to form NTP request
+        // (see URL above for details on the packets)
+        packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+        packetBuffer[1] = 0;     // Stratum, or type of clock
+        packetBuffer[2] = 6;     // Polling Interval
+        packetBuffer[3] = 0xEC;  // Peer Clock Precision
+        // 8 bytes of zero for Root Delay & Root Dispersion
+        packetBuffer[12]  = 49;
+        packetBuffer[13]  = 0x4E;
+        packetBuffer[14]  = 49;
+        packetBuffer[15]  = 52;
+
+        // all NTP fields have been given values, now
+        // you can send a packet requesting a timestamp:
+        udp.beginPacket(address, 123); //NTP requests are to port 123
+        udp.write(packetBuffer, NTP_PACKET_SIZE);
+        udp.endPacket();
+        return 0;
+      }
+
+  //
   // ------ class md_wifi --------------------------
     md_wifi::md_wifi()
       {
-        _isinit = false;
-        _ssid   = (char*) nossid;
+        _gateip    = (uint32_t) 0;
+        _subnet    = (uint32_t) 0;
+        _locip     = (uint32_t) 0;
+        _ssid[0]   = 0;
+        _passw[0]  = 0;
+        _isinit    = false;
+        _lenlist   = 0;
+        _pssidlist = NULL;
+        _ppwlist   = NULL;
+        _piplist   = NULL;
       }
 
-    bool md_wifi::md_initWIFI()
+    void md_wifi::setIPList(md_localIP* piplist)
+      {
+        _piplist = piplist;
+      }
+
+    bool md_wifi::initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz)
       {
                 Serial.println();
                 Serial.print(millis()); Serial.print(" initWIFI .. ");
-        #ifdef WIFI_LOCAL_IP
-          setLocIP();
-          WiFi.mode(WIFI_STA);
-          if ( WiFi.config(_locip, _gateip, _subnet /*, primaryDNS, secondaryDNS*/) == false)
+        if (_stat == LOCIP_OK)
           {
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                    Serial.println("STA Failed to configure -> exit");
-                  #endif
-            return MDERR;
+            //setLocIP();
+            WiFi.mode(WIFI_STA);
+            _lenlist  = anz;
+            _pssidlist = ssids;
+            _ppwlist   = pws;
+            /*
+            if ( WiFi.config(_locip, _gateip, _subnet ) == false) //, primaryDNS, secondaryDNS
+            {
+                    #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
+                      Serial.println("STA Failed to configure -> exit");
+                    #endif
+              return WIFI_ERR;
+            }
+            */
           }
-        #endif
         WiFi.onEvent(WiFiEvent); // start interrupt handler
         _isinit = true;
               Serial.println(" OK");
-        return MDOK;
+        return WIFI_OK;
       }
 
-    void md_wifi::setLocIP()
-      {
-        _locip  = locIP;
-        _gateip = gateIP;
-        _subnet = subNET;
-      }
-
-    bool md_wifi::md_scanWIFI()
+    bool md_wifi::scanWIFI()
       {
         if (!_isinit)
         {
-          return MDERR;
+          return WIFI_ERR;
         }
         // Set WiFi to station mode and disconnect from an AP if it was previously connected
 
-        _ssid = (char*) nossid;
+        _ssid[0] = 0;
+        _locip   = (uint32_t) 0;
+        _gateip  = (uint32_t) 0;
+        _subnet  = (uint32_t) 0;
                 Serial.println();
                 Serial.print(millis()); Serial.println(" WIFI scan");
         usleep(10000);
@@ -283,33 +349,31 @@
         else
         {
                   Serial.print(n); Serial.println(" networks found");
-          for (int i = 0; i < n; ++i)
+          uint8_t s = 0;
+          for (uint8_t i = 0; i < n; ++i)
           {
             // Print SSID and RSSI for each network found
                     Serial.print(i + 1);
-            if (WiFi.SSID(i) == ssidHM)
-            {
-              _ssid  = (char*) ssidHM;
-              _passw = (char*) passwHM;
-                      Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
-            }
-            else if (WiFi.SSID(i) == ssidMAMD)
-            {
-              _ssid  = (char*) ssidMAMD;
-              _passw = (char*) passwMAMD;
-                      Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
-            }
-            else if (WiFi.SSID(i) == ssidWL)
-            {
-              _ssid  = (char*) ssidWL;
-              _passw = (char*) passwWL;
-                      Serial.print(" used: "); Serial.print(_ssid); Serial.print(" - ");
-            }
-            else
-            {
+            for ( s = 0; s < _lenlist ; s++ )
+              {
+                if (strcmp(WiFi.SSID(i).c_str(), *_pssidlist[s]) == 0)
+                  {
+                    memcpy(_ssid, _pssidlist[s], sizeof(LoginTxt_t)) ;
+                    memcpy(_passw, _ppwlist[s], sizeof(LoginTxt_t)) ;
+                            Serial.print(" used: "); Serial.print((char*) _ssid); Serial.print(" - ");
+                    if (_piplist != NULL)
+                      {
+                        _locip  = _piplist[s].getIP();
+                        _gateip = _piplist[s].getGW();
+                        _subnet = _piplist[s].getSN();
+                      }
+                    break;
+                  }
+              }
+            if ( s >= _lenlist)
+              {
                     Serial.print("       ");
-            }
-
+              }
                     Serial.print(WiFi.SSID(i));
                     Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.print(")");
                     Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
@@ -317,57 +381,49 @@
           }
         }
       //  WiFi.disconnect();
-        if (_ssid != nossid) { return MDOK; }
-        else                 { return MDERR; };
+        if (strlen(*_ssid) > 0) { return WIFI_OK; }
+        else                    { return WIFI_ERR; };
       }
 
-    bool md_wifi::md_startWIFI()
+    bool md_wifi::startWIFI()
       {
                 Serial.print(millis());
                 Serial.println(" md_startWIFI");
-        if (_ssid == nossid)
+        if (strlen(*_ssid) == 0)
           { // keine SSID
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
                     Serial.print(millis());
                     Serial.println(" SSID nicht initialisiert ");
-                  #endif
-            return MDERR;
+            return WIFI_ERR;
           }
 
-        WiFi.begin(_ssid, _passw); // start connection
+        WiFi.begin(*_ssid, *_passw); // start connection
         Serial.println(""); Serial.println(millis());
 
         // Wait for connection
-        usleep(WIFI_CONN_DELAY);
-        uint8_t repOut = (uint8_t) WIFI_CONN_REP;
+        usleep(_conn_delay);
+        uint8_t repOut = (uint8_t) _conn_rep;
         while ((WiFi.status() != WL_CONNECTED) && (repOut > 0))
           {
-                    #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                      Serial.print(".");
-                    #endif
-            usleep(WIFI_CONN_DELAY);
+                    Serial.print(".");
+            usleep(_conn_delay);
             repOut--;
           }
 
         if (WiFi.status() == WL_CONNECTED)
           {
-                    #if (DEBUG_MODE > CFG_DEBUG_NONE)
                       Serial.println("");
                       Serial.print(millis());
                       Serial.print(" Connected to ");
-                      Serial.println(_ssid);
+                      Serial.println(*_ssid);
                       Serial.print("IP address: ");
                       Serial.println(WiFi.localIP());
                       Serial.print("MAC address: ");
                       Serial.println(WiFi.macAddress());
-                    #endif
             if (MDNS.begin("esp32"))
             {
-                      #if (DEBUG_MODE > CFG_DEBUG_NONE)
-                        Serial.println("MDNS responder started");Serial.println();
-                      #endif
+                      Serial.println("MDNS responder started");Serial.println();
             }
-            return MDOK;
+            return WIFI_OK;
           }
           else
           {
@@ -375,75 +431,8 @@
                       Serial.println("Connection failed -> timout");
                     #endif
           }
-          return MDERR;
+          return WIFI_ERR;
       }
-    #ifdef USE_NTP_SERVER
-      bool     md_wifi::md_initNTPTime()
-        {
-          udp.begin(localPort);
-          return MDOK;
-        }
-
-      bool     md_wifi::md_getTime(time_t *ntpEpoche)
-        {
-          if (WiFi.status() == WL_CONNECTED)
-          {
-            md_sendNTPpacket(timeServer);
-            sleep(1);
-
-            int cb = udp.parsePacket();
-                    #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                      Serial.print("parsePacket cb = "); Serial.println(cb);
-                    #endif
-            if (cb > 0)
-              {
-                cb = udp.read(packetBuffer, NTP_PACKET_SIZE);
-                      #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                        Serial.print("read Packet cb = "); Serial.println(cb);
-                      #endif
-                if (cb == NTP_PACKET_SIZE)
-                  {
-                    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-                    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
-
-                    unsigned long secsSince1900 = highWord << 16 | lowWord;
-
-                    const unsigned long seventyYears = 2208988800UL;
-                    //unsigned long epoch = secsSince1900 - seventyYears;
-                    *ntpEpoche = secsSince1900 - seventyYears
-                               + UTC_TIMEZONE; // + UTC_SUMMERTIME * 3600;
-                    return MDOK;
-                  }
-              }
-          }
-          return MDERR;
-        }
-
-      uint64_t md_wifi::md_sendNTPpacket(IPAddress& address)
-        {
-          //Serial.println("sending NTP packet...");
-          // set all bytes in the buffer to 0
-          memset(packetBuffer, 0, NTP_PACKET_SIZE);
-          // Initialize values needed to form NTP request
-          // (see URL above for details on the packets)
-          packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-          packetBuffer[1] = 0;     // Stratum, or type of clock
-          packetBuffer[2] = 6;     // Polling Interval
-          packetBuffer[3] = 0xEC;  // Peer Clock Precision
-          // 8 bytes of zero for Root Delay & Root Dispersion
-          packetBuffer[12]  = 49;
-          packetBuffer[13]  = 0x4E;
-          packetBuffer[14]  = 49;
-          packetBuffer[15]  = 52;
-
-          // all NTP fields have been given values, now
-          // you can send a packet requesting a timestamp:
-          udp.beginPacket(address, 123); //NTP requests are to port 123
-          udp.write(packetBuffer, NTP_PACKET_SIZE);
-          udp.endPacket();
-          return 0;
-        }
-    #endif
   //
   // --- class md_server --------------------------
     bool md_server::md_startServer()

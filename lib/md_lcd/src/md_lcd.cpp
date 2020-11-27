@@ -28,7 +28,7 @@
   {
     ((LiquidCrystal*) _plcd)->setCursor(col, row);
     ((LiquidCrystal*) _plcd)->write(msg);
-    return MDOK;
+    return ISOK;
   }
 
 
@@ -36,7 +36,7 @@
   {
     ((LiquidCrystal*) _plcd)->setCursor(0, 1);
     ((LiquidCrystal*) _plcd)->write(msg);
-    return MDOK;
+    return ISOK;
   }
 
 #endif // USE_TFT

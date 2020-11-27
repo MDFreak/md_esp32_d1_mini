@@ -2,10 +2,10 @@
   #define _MD_OLED_H_
 
   #include <Arduino.h>
-  #include <config.h>
+  #include <md_defines.h>
   #include <md_util.h>
 
-  #ifdef USE_OLED
+  //#ifdef USE_OLED
     #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
 //    #include "SH1106Wire.h"        // legacy: #include "SSD1306.h"
     #include <SSD1306Wire.h>        // legacy: #include "SSD1306.h"
@@ -55,7 +55,7 @@
 
     #define _MD_OLED_MAX_ROWS 6
     #define _MD_OLED_MAX_COLS 30
-    class md_oled
+    class md_oled: public SSD1306Wire
     {
       private:
         msTimer  _clrT      = msTimer();
@@ -73,8 +73,10 @@
         uint8_t  _len       = 0;
 
       public:
-        md_oled(uint8_t chan, uint8_t cols, uint8_t rows);
-        bool begin();
+        md_oled(uint8_t address, uint8_t sda, uint8_t scl, OLEDDISPLAY_GEOMETRY g)
+            : SSD1306Wire(address, sda, scl, g) {}
+
+        bool begin(uint8_t cols, uint8_t rows);
         void clear();
         void drawCircle(void);
 /*
@@ -114,5 +116,5 @@
 
     extern md_oled oled;
 
-  #endif // USE_OLED
+  //#endif // USE_OLED
 #endif // _MD_OLED_H_

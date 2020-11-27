@@ -40,7 +40,7 @@
           #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
             Serial.println("md_touch::startTouch ready"); delay(100);
           #endif
-      return MDOK;
+      return ISOK;
     }
 
   bool md_touch::calTouch() // calibrate touch
@@ -132,7 +132,7 @@
       strncpy(outTxt, msg, STAT_LINELEN - spalte + 1);
       //  outTxt[STAT_LINELEN - spalte] = 0;
       tft.drawString(outTxt, spalte * 13, zeile * 29 - 5 );
-      return MDOK;
+      return ISOK;
     }
 
   void md_touch::runTouch(char* pStatus)
@@ -243,7 +243,7 @@
     {
       //unsigned long diffTime = millis() - statWrTime;
       int8_t res = 0; // -1:wait, 0:ok, 1:write , 2:clear
-      bool   ret = MDOK;
+      bool   ret = ISOK;
       if(strlen(msg) == 0)
       {
         if ((isStatus == true) && (clrT.TOut() == true))
@@ -300,7 +300,7 @@
       // Draw number display area and frame
       tft.fillRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_BLACK);
       tft.drawRect(DISP_X, DISP_Y, DISP_W, DISP_H, TFT_WHITE);
-      return MDOK;
+      return ISOK;
     }
 
   bool md_touch::_drawKeypad()
@@ -319,7 +319,7 @@
                           keyLabel[col], KEY_TEXTSIZE);
         key[col].drawButton();
       }
-      return MDOK;
+      return ISOK;
     }
 
   bool md_touch::_drawStatus(char* outStat)
@@ -333,7 +333,7 @@
       tft.setTextFont(1);
       tft.setTextSize(2);
       tft.drawString(outStat, STATUS_XCENT, STATUS_YCENT);
-      return MDOK;
+      return ISOK;
     }
 
   //
@@ -341,7 +341,7 @@
   bool md_touch::_clearTFT()
     {
       tft.fillScreen(DISP_BCOL);
-      return MDOK;
+      return ISOK;
     }
 
   bool md_touch::_initTFT(const uint8_t csTFT)
@@ -356,7 +356,7 @@
       calTouch();
       // Clear the screen
       _clearTFT();
-      return MDOK;
+      return ISOK;
     }
 
   //
