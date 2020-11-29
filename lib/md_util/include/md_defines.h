@@ -28,6 +28,8 @@
       #define UTC_SUMMERTIME    1
       #define UTC_WINTERTIME    0
 
+      #define NET_MAX_PW_LEN    14
+      #define NET_MAX_SSID_LEN  14
     //
     // --- macros
       #define SET(b)      (b = true)
