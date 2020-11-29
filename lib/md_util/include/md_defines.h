@@ -38,7 +38,6 @@
       #define SOUTLN(c)   (Serial.println(c))
       #define SOUTHEXLN(c)(Serial.println(c, HEX))
     //
-    //
     // --- MC_: 16 bit coded numbering of controller and periferal boards
       //bin xx xxxx xxxxxx xxxx
       //    || |||| |||||| ++++ individual number (type spezific)
@@ -58,11 +57,13 @@
       //    |+ 5 V
       //    +  3.3 V
 
+    //
     // --- voltage defines
       #define  MC_PW_3V3   0x8000
       #define  MC_PW_5V    0x4000
       #define  MC_PW       0xa000 // mask for voltage
 
+    //
     // --- controller types
       #define  MC_UC_AV       0x2000 // arduino
       #define  MC_UC_ESP8266  0x1000 // ESP8266
@@ -70,6 +71,7 @@
       #define  MC_UC_STM      0x0400 // STM32
       #define  MC_UC          0x3c00 // mask for 'is controller
 
+    //
     // --- module types
       #define MC_MOD_RES      0x0200 // reserved
       #define MC_MOD_SYS      0x0100 // system internal or interface
@@ -78,6 +80,7 @@
       #define MC_MOD_UOUT     0x0020 // user output
       #define MC_MOD_UIN      0x0010 // user input
 
+    //
     // --- controller boards
       // --- arduino boards
         #define  MC_AV_NANO_V3    0x0003 + MC_PW_5V + MC_UC_AV
@@ -105,12 +108,14 @@
         #define  MC_UI_Keypad_ANA0_RO   0x0000 + MC_MOD_UIN + MC_PW_3V3 + MC_PW_5V // used by KEYPADSHIELD
         #define  MC_UI_TOUCHXPT2046_AZ  0x0002 + MC_MOD_UIN + MC_PW_3V3  // used by Arduino-touch-case
 
+    //
     // --- active outputs
       // --- 3V3 & 5V tolerant outputs    0x00 - 0x3F = 0 - 63
         #define  AOUT_PAS_BUZZ_3V5V       U_3V5V + 0  // used by Arduino-touch-case
       // --- 5V outputs                   0x40 - 0x7F = 64 - 127
       // --- 3V3 outputs                  0x80 - 0xBF = 128 - 191
 
+    //
     // --- I2C devices
       // --- 3V3 & 5V tolerant devices    0x00 - 0x3F = 0 - 63
         #define  IIC_TFT1602_IIC_XA_3V3   U_3V3  + 0

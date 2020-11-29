@@ -197,21 +197,20 @@
 
 //
 // --- classes
+    md_localIP::md_localIP(uint32_t ip, uint32_t gw, uint32_t sn)
+      {
+        setIP(ip, gw, sn);
+      }
   //
   // ------ class md_localIP --------------------------
-    bool md_localIP::setIP(uint32_t ip)
+    void md_localIP::setIP(uint32_t ip, uint32_t gw, uint32_t sn)
       {
         _IP = ip;
-        _stat = _stat | LOCIP_IP;
-        return WIFI_OK;
+        _GW = gw;
+        _SN = sn;
+        _stat = LOCIP_OK;
       }
 
-    bool md_localIP::setGW(uint32_t ip)
-      {
-        _IP = ip;
-        _stat = _stat | LOCIP_GW;
-        return WIFI_OK;
-      }
   //
   // ------ class md_NTPTime --------------------------
     bool md_NTPTime::initNTPTime(uint8_t summer)
@@ -295,6 +294,18 @@
     void md_wifi::setIPList(md_localIP* piplist)
       {
         _piplist = piplist;
+              SOUT(" piplist* "); SOUTHEX((uint32_t) _piplist[0].getIP());
+              SOUT("  sizeof "); SOUTHEXLN((uint32_t) sizeof(_piplist[0]));
+        for (uint8_t i = 0; i < 3; i++ )
+          {
+            SOUT(" pipList["); SOUT(i);
+            SOUT("] IP-GW-SN "); SOUTHEX(_piplist[i].getIP());
+            SOUT(" - "); SOUTHEX(_piplist[i].getGW());
+            SOUT(" - "); SOUTHEXLN(_piplist[i].getSN());
+            //piplist += sizeof(md_localIP);
+                SOUT(" piplist* "); SOUTHEX((uint32_t) &_piplist[i]);
+                SOUT("  sizeof "); SOUTHEXLN((uint32_t) sizeof(_piplist[0]));
+          }
       }
 
     bool md_wifi::initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz)

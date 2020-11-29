@@ -6,7 +6,7 @@
 
   #define PROJ_TITLE "   ESP32 TEST"
 
-  // --- serial connection
+  // --- system defines
     #define SER_BAUDRATE  115200ul
     #define GEO_128_64    0
     #define GEO_128_32    1
@@ -93,7 +93,7 @@
       // --- pins, connections
         #define PIN_BOARD_LED         2
 
-        #define ANZ_IIC       2
+        #define ANZ_IIC          2
         #define PIN_I2C1_SDA          21
         #define PIN_I2C1_SCL          22
         #define PIN_I2C2_SDA          25
@@ -295,6 +295,8 @@
           #endif // DISP
 
         //
+      //
+      // --- acoustic output
         #ifdef AOUT
             #if !(AOUT ^ AOUT_PAS_BUZZ_3V5V)
                 #define PLAY_MUSIC

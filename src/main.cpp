@@ -119,7 +119,7 @@
         msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
         #if defined(USE_LOCAL_IP)
             md_localIP locIP[WIFI_ANZ_LOGIN];
-          #endif
+          #endif // USE_LOCAL_IP
         #if defined(USE_NTP_SERVER)
             msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
             time_t  ntpTime = 0;
@@ -370,9 +370,6 @@
       void startWIFI()
         {
           dispStatus("  start WIFI");
-          #if defined(USE_LOCAL_IP)
-              wifi.setIPList(locIP);
-            #endif
           bool ret = wifi.initWIFI(&wifiSSID[0], &wifiPW[0], (uint8_t) WIFI_ANZ_LOGIN);
                   #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                     SOUT(millis()); SOUT(" initWIFI ret="); SOUTLN(ret);
@@ -548,16 +545,38 @@
       // --- network
         // start WIFI
           #ifdef USE_WIFI
+            #if defined(USE_LOCAL_IP)
+                locIP[0].setIP((uint32_t) WIFI_FIXIP0, (uint32_t) WIFI_GATEWAY0, (uint32_t) WIFI_SUBNET);
+                #if (WIFI_ANZ_LOGIN > 1)
+                    locIP[0].setIP((uint32_t) WIFI_FIXIP1, (uint32_t) WIFI_GATEWAY1, (uint32_t) WIFI_SUBNET);
+                  #endif
+                #if (WIFI_ANZ_LOGIN > 2)
+                    locIP[0].setIP((uint32_t) WIFI_FIXIP2, (uint32_t) WIFI_GATEWAY2, (uint32_t) WIFI_SUBNET);
+                  #endif
+                #if (WIFI_ANZ_LOGIN > 3)
+                    locIP[0].setIP((uint32_t) WIFI_FIXIP3, (uint32_t) WIFI_GATEWAY3, (uint32_t) WIFI_SUBNET);
+                  #endif
+                #if (WIFI_ANZ_LOGIN > 4)
+                    locIP[0].setIP((uint32_t) WIFI_FIXIP4, (uint32_t) WIFI_GATEWAY4, (uint32_t) WIFI_SUBNET);
+                  #endif
+
+                wifi.setIPList(&(locIP[0]));
+              #endif
+
             startWIFI();
             if ((md_error & ERRBIT_WIFI) == 0)
-              {
                 dispStatus("WIFI connected");
-              }
               else
-              {
                 dispStatus("WIFI error");
-              }
-            #endif // USE_WIFI
+              if ((md_error & ERRBIT_WIFI) == 0)
+                {
+                  dispStatus("WIFI connected");
+                }
+                else
+                {
+                  dispStatus("WIFI error");
+                }
+              #endif // USE_WIFI
       //
       // --- sensors
         // temp. sensor DS18D20
