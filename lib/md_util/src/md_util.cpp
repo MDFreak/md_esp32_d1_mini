@@ -1,6 +1,6 @@
-#include "md_util.h"
-#include "wire.h"
-
+#include <wire.h>
+#include <md_util.h>
+#include <md_defines.h>
 
 // TwoWire I2Cone = TwoWire(0);
 // TwoWire I2Ctwo = TwoWire(1);
@@ -35,10 +35,9 @@ uint16_t setBit(const uint16_t inWert, const uint16_t inBit, const bool inVal)
 uint8_t scanIIC(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
   {
     uint8_t i = 0;
-    TwoWire I2C = TwoWire(no-1);
+    TwoWire I2C = TwoWire(no);
     I2C.begin(sda,scl,400000);
-    Serial.println();
-    Serial.print("Scanning I2C Addresses Channel "); Serial.print(no);
+    SOUT("Scanning I2C Addresses Channel "); SOUT(no);
     //uint8_t cnt=0;
     for(i = start; i < 128 ; i++)
       {
@@ -46,14 +45,14 @@ uint8_t scanIIC(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
         uint8_t ec=I2C.endTransmission(true);
         if(ec==0)
           {
-            Serial.print(" device at address 0x");
-            if (i<16) Serial.print('0');
-            Serial.print(i, HEX);
+            SOUT(" device at address 0x");
+            if (i<16) { SOUT('0'); }
+            SOUTHEX(i);
             break;
           }
       }
     I2C.~TwoWire();
-    Serial.println();
+    SOUTLN();
     return i;
   }
 

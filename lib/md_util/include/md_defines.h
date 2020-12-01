@@ -118,14 +118,15 @@
       // --- 3V3 outputs                  0x80 - 0xBF = 128 - 191
 
     //
-    // --- I2C devices
+    // --- I2C device addresses
       // --- 3V3 & 5V tolerant devices    0x00 - 0x3F = 0 - 63
-        #define  IIC_TFT1602_IIC_XA_3V3   U_3V3  + 0
-        #define  IIC_FRAM_3V5V            U_3V5V + 1
+        //#define  IIC_TFT1602_IIC_XA_3V3   U_3V3  + 0
+        #define  IIC_UO_TFT1602_IIC_XA
+        //#define  IIC_FRAM_3V5V            U_3V5V + 1
         #define  IIC_DEV_NN               255
       // --- 5V devices                   0x40 - 0x7F = 64 - 127
       // --- 3.3V devices                 0x80 - 0xBF = 128 - 191
-        #define  IIC_OLED_3V3             U_3V3  + 1  // IIC adress 0x3C
+        //#define  IIC_OLED_3V3             U_3V3  + 1  // IIC adress 0x3C
 
     //
     // --- switching projects

@@ -52,24 +52,24 @@
     #ifdef USE_OLED
         #ifdef OLED1
             #if !(OLED1_GEO ^ GEO_128_32)
-              md_oled oled1 = md_oled((uint8_t) OLED2_I1C_ADDR, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C1_SCL, GEOMETRY_128_32);
+              md_oled oled1 = md_oled((uint8_t) I1C_ADDR_OLED1, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C1_SCL, GEOMETRY_128_32);
             #endif
             #if !(OLED1_GEO ^ GEO_128_64)
-              md_oled oled1 = md_oled((uint8_t) OLED2_I1C_ADDR, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_128_64);
+              md_oled oled1 = md_oled((uint8_t) I1C_ADDR_OLED1, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_128_64);
             #endif
             #if !(OLED1_GEO ^ GEO_RAWMODE)
-              md_oled oled1 = md_oled((uint8_t) OLED2_I1C_ADDR, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_RAWMODE);
+              md_oled oled1 = md_oled((uint8_t) I1C_ADDR_OLED1, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_RAWMODE);
             #endif
           #endif
         #ifdef OLED2
             #if !(OLED2_GEO ^ GEO_128_32)
-              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_32);
+              md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_32);
             #endif
             #if !(OLED2_GEO ^ GEO_128_64)
-              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_64);
+              md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_64);
             #endif
             #if !(OLED2_GEO ^ GEO_RAWMODE)
-              md_oled oled2 = md_oled((uint8_t) OLED2_I2C_ADDR, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_RAWMODE);
+              md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_RAWMODE);
             #endif
           #endif
         msTimer oledT   = msTimer(DISP_CYCLE);
@@ -83,6 +83,7 @@
       #endif
   // ------ network ----------------------
     #ifdef USE_WIFI
+      /*
         LoginTxt_t wifiSSID[WIFI_ANZ_LOGIN] =
                     {
                       { WIFI_SSID0 }
@@ -99,7 +100,7 @@
                         , { WIFI_SSID4 }
                         #endif
                     };
-        LoginTxt_t wifiPW[WIFI_ANZ_LOGIN] =
+        //LoginTxt_t wifiPW[WIFI_ANZ_LOGIN] =
                     {
                       { WIFI_SSID0_PW }
                       #if (WIFI_ANZ_LOGIN > 1)
@@ -115,10 +116,11 @@
                         , { WIFI_SSID4_PW }
                         #endif
                     };
+      */
         md_wifi wifi  = md_wifi();
         msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
         #if defined(USE_LOCAL_IP)
-            md_localIP locIP[WIFI_ANZ_LOGIN];
+            //md_localIP locIP[WIFI_ANZ_LOGIN];
           #endif // USE_LOCAL_IP
         #if defined(USE_NTP_SERVER)
             msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
@@ -367,27 +369,44 @@
         void getDS18D20Str(String outS);
   // ------ WIFI -------------------------
     #if defined(USE_WIFI)
-      void startWIFI()
+      void startWIFI(bool startup)
         {
+          bool ret = ISERR;
           dispStatus("  start WIFI");
-          bool ret = wifi.initWIFI(&wifiSSID[0], &wifiPW[0], (uint8_t) WIFI_ANZ_LOGIN);
-                  #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                    SOUT(millis()); SOUT(" initWIFI ret="); SOUTLN(ret);
-                  #endif
-          if (ret == ISOK)
+          if (startup)
             {
-              ret = wifi.scanWIFI();
-                    #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-                      SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
-                    #endif
+              ip_list ipList = ip_list(); // temporary object
+              SOUT(millis()); SOUT(" created ipList "); SOUTHEXLN((int) &ipList);
+              SOUT(millis()); SOUTLN(" setup add WIFI 0");
+              ipList.append(WIFI_FIXIP0, WIFI_GATEWAY0, WIFI_SUBNET, WIFI_SSID0, WIFI_SSID0_PW);
+              #if (WIFI_ANZ_LOGIN > 1)
+                  SOUT(millis()); SOUTLN(" setup add WIFI 1");
+                  ipList.append(WIFI_FIXIP1, WIFI_GATEWAY1, WIFI_SUBNET, WIFI_SSID1, WIFI_SSID1_PW);
+                #endif
+              #if (WIFI_ANZ_LOGIN > 2)
+                  SOUT(millis()); SOUTLN(" setup add WIFI 2");
+                  ipList.append(WIFI_FIXIP2, WIFI_GATEWAY2, WIFI_SUBNET, WIFI_SSID2, WIFI_SSID2_PW);
+                #endif
+              #if (WIFI_ANZ_LOGIN > 3)
+                  SOUT(millis()); SOUTLN(" setup add WIFI 3");
+                  ipList.append(WIFI_FIXIP3, WIFI_GATEWAY3, WIFI_SUBNET, WIFI_SSID3, WIFI_SSID3_PW);
+                #endif
+              #if (WIFI_ANZ_LOGIN > 4)
+                  SOUT(millis()); SOUTLN(" setup add WIFI 4");
+                  ipList.append(WIFI_FIXIP3, WIFI_GATEWAY4, WIFI_SUBNET, WIFI_SSID4, WIFI_SSID4_PW);
+                #endif
+              SOUT(millis()); SOUTLN(" setup locWIFI fertig");
+
+              ret = wifi.scanWIFI(&ipList);
+                    //#if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+              SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
+                    //#endif
+              //ipList.~ip_list();
             }
-          if (ret == ISOK)
-            {
-              ret = wifi.startWIFI();
-                    #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
+          ret = wifi.startWIFI();
+                    //#if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                       SOUT("startWIFI ret="); SOUT(ret);
-                      #endif
-            }
+                      //#endif
           md_error = setBit(md_error, ERRBIT_WIFI, ret);
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                   SOUT("  md_error="); SOUTLN(md_error);
@@ -498,7 +517,7 @@
             // check I2C1 for devices
             while (addr < SCAN_IIC)
               {
-                addr = scanIIC(1, addr, PIN_I2C1_SDA, PIN_I2C1_SCL);
+                addr = scanIIC(0, addr, PIN_I2C1_SDA, PIN_I2C1_SCL);
                 if ((0 < addr) && (addr < SCAN_IIC))
                   {
                     devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
@@ -508,11 +527,11 @@
               }
             sleep(1);
 
-            #ifdef I2C2_SDA
+            #ifdef PIN_I2C2_SDA
               addr = 0;
               while (addr < SCAN_IIC)
                 {
-                  addr = scanIIC(2, addr, I2C2_SDA, I2C2_SCL);
+                  addr = scanIIC(1, addr, PIN_I2C2_SDA, PIN_I2C2_SCL);
                   if ((0 < addr) && (addr < SCAN_IIC))
                     {
                       devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
@@ -545,25 +564,7 @@
       // --- network
         // start WIFI
           #ifdef USE_WIFI
-            #if defined(USE_LOCAL_IP)
-                locIP[0].setIP((uint32_t) WIFI_FIXIP0, (uint32_t) WIFI_GATEWAY0, (uint32_t) WIFI_SUBNET);
-                #if (WIFI_ANZ_LOGIN > 1)
-                    locIP[0].setIP((uint32_t) WIFI_FIXIP1, (uint32_t) WIFI_GATEWAY1, (uint32_t) WIFI_SUBNET);
-                  #endif
-                #if (WIFI_ANZ_LOGIN > 2)
-                    locIP[0].setIP((uint32_t) WIFI_FIXIP2, (uint32_t) WIFI_GATEWAY2, (uint32_t) WIFI_SUBNET);
-                  #endif
-                #if (WIFI_ANZ_LOGIN > 3)
-                    locIP[0].setIP((uint32_t) WIFI_FIXIP3, (uint32_t) WIFI_GATEWAY3, (uint32_t) WIFI_SUBNET);
-                  #endif
-                #if (WIFI_ANZ_LOGIN > 4)
-                    locIP[0].setIP((uint32_t) WIFI_FIXIP4, (uint32_t) WIFI_GATEWAY4, (uint32_t) WIFI_SUBNET);
-                  #endif
-
-                wifi.setIPList(&(locIP[0]));
-              #endif
-
-            startWIFI();
+            startWIFI(true);
             if ((md_error & ERRBIT_WIFI) == 0)
                 dispStatus("WIFI connected");
               else
@@ -695,7 +696,7 @@
               {
                 SOUTLN("WiFi startWIFI");
                 dispStatus("WiFi startWIFI");
-                startWIFI();
+                startWIFI(false);
               }
           }
         #endif // USE_WIFI

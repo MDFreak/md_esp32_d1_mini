@@ -8,6 +8,7 @@
   //#include <SPI.h>
   #include <prj_config.h>
   #include <md_util.h>
+  #include <ip_list.hpp>
 
   // --- user interface
     #ifdef USE_TOUCHSCREEN

@@ -145,8 +145,8 @@
       if (_len > _cols) { _len = _cols; }
       for (uint8_t i = 0 ; i < _len ; i++) { _statStr[i] = msg[i]; }
       this->drawString(0, (_rows -1)*_hfont, _statStr);
-                  SOUT((uint32_t) millis()); SOUT(" oled _statTxt'"); SOUT(_statStr);
-                  SOUTLN("' Statuszeile schreiben ");
+                  //SOUT((uint32_t) millis()); SOUT(" oled _statTxt'"); SOUT(_statStr);
+                  //SOUTLN("' Statuszeile schreiben ");
       this->display();
     }
   //

@@ -20,7 +20,7 @@
   #define _LINKED_LIST_HPP_
 
   #include <stdlib.h>
-  //#include <Arduino.h>
+  #include <Arduino.h>
   #include <md_defines.h>
 
   class md_cell           /* Abstrakte Basisklasse fuer Listenelemente */
@@ -28,7 +28,7 @@
       protected:
         md_cell    *_pNext;             // Pointer auf naechstes Listenelement
 
-        md_cell()  { _pNext = NULL; }   // Konstruktor
+        md_cell();   // Konstruktor
 
       public:
         friend class md_list;
@@ -42,12 +42,13 @@
         md_cell     *_pLast;
 
       public:
-        md_list() { _pFirst = _pLast = NULL; }  // Konstruktor
+        md_list();  // Konstruktor
         ~md_list();
         void      append( md_cell *pCell );      // An Ende anhaengen
         md_cell*  getCellPointer( unsigned short index ); // Pointer auf ein Listenelement holen
         md_cell*  getNextCellPointer( md_cell *pCell ); /* Pointer auf das naechste Listenelement holen */
         md_cell*  removeFirstCell(); /* Erstes Element aus der Liste entnehmen und Pointer auf dieses Element zurueckgeben */
+
     };
 
 #endif

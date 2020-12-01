@@ -41,7 +41,6 @@
         // --- display
             #define USE_DISP
             #if defined(USE_DISP)
-
                 #define USE_OLED
                 #ifdef USE_OLED
                     // select I2C device
@@ -83,21 +82,16 @@
       // --- sensors
         // --- temperature, humidity ...
           #define USE_DS18B20
-
+          #define USE_BME280
       //
       // --- memories
         // --- FRAM
-        //#define USE_FRAM_32K_I2C
+          //#define USE_FRAM_32K_I2C
 
       //
       // --- pins, connections
         #define PIN_BOARD_LED         2
 
-        #define ANZ_IIC          2
-        #define PIN_I2C1_SDA          21
-        #define PIN_I2C1_SCL          22
-        #define PIN_I2C2_SDA          25
-        #define PIN_I2C2_SCL          26
         // --- user output
           #ifdef USE_TFT
               #if !(DISP_TFT ^ MC_UO_TFT1602_GPIO_RO)
@@ -111,12 +105,30 @@
                 #endif
             #endif
 
-          //#define PIN_BUZZ            21
+            //#define PIN_BUZZ            21
         // --- sensors
           #ifdef USE_DS18B20
               #define DS_ONEWIRE_PIN  27
             #endif
           #endif
+
+      // --- I2C
+        #define ANZ_IIC          2
+        #define PIN_I2C1_SDA          21
+        #define PIN_I2C1_SCL          22
+        #define PIN_I2C2_SDA          25
+        #define PIN_I2C2_SCL          26
+
+        #ifdef OLED1
+            #define I2C_ADDR_OLED1  0x3C
+          #endif
+        #ifdef OLED2
+            #define I2C_ADDR_OLED2  0x3C
+          #endif
+
+        #define I2C_ADDR_FRAM       0x50
+
+        #define I2C_ADDR_BME280     0x76
     //
     #if !(BOARD ^ MC_ESP32_D1_R32)
         #define USE_TASKING
@@ -217,13 +229,13 @@
             #define USE_LOCAL_IP
             #if defined(USE_LOCAL_IP)
                 #define WIFI_ANZ_LOCIP WIFI_ANZ_LOGIN
-                #define WIFI_FIXIP0    0x0a000014ul // 10.0.0.20
-                #define WIFI_GATEWAY0  0x0a00008bul // 10.0.0.139
-                #define WIFI_FIXIP1    0x0a000014ul // 10.0.0.20
-                #define WIFI_GATEWAY1  0x0a00008bul // 10.0.0.139
-                #define WIFI_FIXIP2    0x0a000014ul // 10.0.0.20
-                #define WIFI_GATEWAY2  0x0a00008aul // 10.0.0.138
-                #define WIFI_SUBNET    0xffffff00ul // 255.255.255.0
+                #define WIFI_FIXIP0    0x1400000Aul // 10.0.0.20   lowest first
+                #define WIFI_GATEWAY0  0x8B00000Aul // 10.0.0.139
+                #define WIFI_FIXIP1    0x1400000Aul // 10.0.0.20
+                #define WIFI_GATEWAY1  0x8B00000Aul // 10.0.0.139
+                #define WIFI_FIXIP2    0x1400000Aul // 10.0.0.20
+                #define WIFI_GATEWAY2  0x8a00000Aul // 10.0.0.138
+                #define WIFI_SUBNET    0x00FFFFFFul // 255.255.255.0
               #endif
           #endif
 
@@ -239,13 +251,13 @@
             #define USE_STATUS
             #ifdef USE_OLED
                 #ifdef OLED1
-                    #define OLED1_I2C_ADDR  0x3C
+                    //#define OLED1_I2C_ADDR  0x3C
                     #ifdef USE_STATUS
                         #define USE_STATUS1
                       #endif
                   #endif
                 #ifdef OLED2
-                    #define OLED2_I2C_ADDR  0x3C
+                    //#define OLED2_I2C_ADDR  0x3C
                     #ifdef USE_STATUS
                         #define USE_STATUS2
                       #endif
@@ -351,6 +363,10 @@
       #ifdef USE_DS18B20
           #define DS_T_PRECISION  9
           #define DS18B20_ANZ     1
+        #endif
+
+      #ifdef USE_BME280
+
         #endif
   //
 #endif // _PRJ_CONFIG_H_

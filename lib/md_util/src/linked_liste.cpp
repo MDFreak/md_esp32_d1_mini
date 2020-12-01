@@ -18,7 +18,30 @@
 
 #include "linked_list.hpp"
 
-// --- public methods
+// --- class md_cell
+md_cell::md_cell()
+  {
+    //SOUT(millis()); SOUTLN(" md_cell new");
+    _pNext = NULL;
+  }
+
+// --- class md_list
+md_list::md_list()
+  {
+    //SOUT(millis()); SOUTLN(" md_list new");
+    _pFirst = _pLast = NULL;
+  }
+
+md_list::~md_list()
+  {
+    md_cell* pcell = NULL;
+    SOUT(millis()); SOUTLN(" md_list del ");
+    while (pcell = md_list::removeFirstCell())
+      {
+        SOUTHEXLN((u_long) pcell);
+      }
+  }
+
 void md_list::append (md_cell *pCell)   /* ein Listenelement am Ende anhaengen */
   {
     if (_pLast == NULL)            /* wenn noch kein Listenelement eingetragen */
@@ -30,6 +53,7 @@ void md_list::append (md_cell *pCell)   /* ein Listenelement am Ende anhaengen *
             _pLast->_pNext = pCell;
             _pLast = pCell;
         }
+    //SOUT(millis()); SOUT(" md_list append "); SOUTHEXLN((u_long) pCell);
   }
 
 //
@@ -52,13 +76,13 @@ md_cell *md_list::getCellPointer( unsigned short index ) /* Pointer auf ein List
           }
       }
 
+    //SOUT(millis()); SOUT(" md_list getCellPointer" ); SOUTHEXLN((u_long) pCell);
     return( pCell );
   }
 
 //
 md_cell *md_list::getNextCellPointer( md_cell *pCell ) /* Pointer auf das naechste Listenelement holen */
   {
-
     if ( pCell != NULL )  /* wenn Element eingetragen */
       {
         pCell = pCell->_pNext; /* Pointer auf naechstes Listenelement */
@@ -68,6 +92,7 @@ md_cell *md_list::getNextCellPointer( md_cell *pCell ) /* Pointer auf das naechs
         ;/* bereits letztes Listenelement erreicht */
       }
 
+    //SOUT(millis()); SOUT(" md_list getNextPointer "); SOUTHEXLN((u_long) pCell);
     return( pCell );
   }
 
@@ -88,6 +113,7 @@ md_cell *md_list::removeFirstCell( ) /* Erstes Element aus der Liste entnehmen u
             _pFirst = _pLast = NULL;
           }
       }
+    //SOUT(millis()); SOUT(" md_list removeFirstCell "); SOUTHEXLN((u_long) pCell);
     return( pCell );
   }
 

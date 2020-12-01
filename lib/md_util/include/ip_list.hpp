@@ -54,12 +54,14 @@
         ip_cell *pLast;
 
       public:
-        ip_list() { _pFirst = pLast = NULL; }
+        ip_list();
         ~ip_list();
 
         void append(uint32_t locIP, uint32_t gwIP, uint32_t snIP,
                      const char ssid[NET_MAX_SSID_LEN],
                      const char pw[NET_MAX_PW_LEN]);
+        ip_cell* getCellPointer( unsigned short index );
+        ip_cell* getNextCellPointer( ip_cell* pCell );
     };
 #endif
 

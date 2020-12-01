@@ -7,6 +7,7 @@
   #include <ESPmDNS.h>
   #include <md_defines.h>
   #include <md_util.h>
+  #include <ip_list.hpp>
 
   #define WIFI_OK   false
   #define WIFI_ERR  true
@@ -21,6 +22,7 @@
 
   typedef char LoginTxt_t[14];
 
+/*
   class md_localIP
     {
       public:
@@ -39,7 +41,7 @@
         IPAddress  _GW;
         IPAddress  _SN;
     };
-
+*/
   class md_NTPTime
     {
       public:
@@ -52,15 +54,15 @@
         uint8_t  _timezone = 0;
     };
 
-  class md_wifi: public md_localIP, public md_NTPTime
+  class md_wifi: public md_NTPTime
     {
       public:
         md_wifi();
         ~md_wifi(){}
-        bool initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz);
-        bool scanWIFI();
+        //bool initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz);
+        bool scanWIFI(ip_list* iplist);
         bool startWIFI();
-        void setIPList(md_localIP* piplist);
+        //void setIPList(md_localIP* piplist);
         bool getNTPTime(time_t *ntpEpoche ) { return getTime(ntpEpoche); }
         bool initNTP(uint8_t summer) { return initNTPTime(summer); }
 
@@ -68,13 +70,13 @@
         IPAddress   _gateip; //IPAddress
         IPAddress   _subnet; //IPAddress
         IPAddress   _locip;  //IPAddress
-        LoginTxt_t  _ssid;
-        LoginTxt_t  _passw;
+        char        _ssid[NET_MAX_SSID_LEN];
+        char        _passw[NET_MAX_PW_LEN];
         bool        _isinit;
-        uint8_t     _lenlist;
-        LoginTxt_t* _pssidlist;
-        LoginTxt_t* _ppwlist;
-        md_localIP* _piplist;
+        //uint8_t     _lenlist;
+        //LoginTxt_t* _pssidlist;
+        //LoginTxt_t* _ppwlist;
+        //md_localIP* _piplist;
         uint64_t    _conn_delay = 500000ul;
         uint8_t     _conn_rep   = 5;
     };
