@@ -1,203 +1,140 @@
+/*!
+ * @file     Adafruit_FRAM_I2C.cpp
+ *
+ * @mainpage Adafruit FRAM I2C
+ *
+ * @author   KTOWN (Adafruit Industries)
+ *
+ * @section intro_sec Introduction
+ *
+ * Driver for the Adafruit I2C FRAM breakout.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * @section  HISTORY
+ *
+ * v1.0 - First release
+ *
+ * @section license License
+ *
+ * BSD license, all text above must be included in any redistribution (see
+ license.txt)
+ */
+#include <math.h>
+#include <stdlib.h>
+
+#include <md_FRAM.h>
+#include <md_defines.h>
+
+// classes
+md_FRAM::md_FRAM(void) { _framInitialised = false; }
 //
-//    FILE: FRAM.cpp
-//  AUTHOR: Rob Tillaart
-// VERSION: 0.2.1
-//    DATE: 2018-01-24
-// PURPOSE: Arduino library for I2C FRAM
-//     URL: https://github.com/RobTillaart/FRAM_I2C
+bool md_FRAM::begin(uint8_t addr)
+  {
+    begin(NN, NN, addr);
+  }
+
+bool md_FRAM::begin(int sda, int scl, uint8_t addr)
+  {
+    _i2c_addr = addr;
+    _sda      = sda;
+    _scl      = scl;
+
+    Wire.begin(_sda, _scl);
+
+    /* Make sure we're actually connected */
+    uint16_t manufID, prodID;
+    getDeviceID(&manufID, &prodID);
+    if (manufID != 0x00A)
+      {
+        Serial.print("Unexpected Manufacturer ID: 0x");
+        Serial.println(manufID, HEX);
+        return false;
+      }
+    if (prodID != 0x510)
+      {
+        Serial.print("Unexpected Product ID: 0x");
+        Serial.println(prodID, HEX);
+        return false;
+      }
+
+    /* Everything seems to be properly initialised and connected */
+    _framInitialised = true;
+
+    return true;
+  }
 //
-// HISTORY:
-// 0.1.0    2018-01-24 initial version
-// 0.1.1    2019-07-31 added suppport for Fujitsu 64Kbit MB85RC64T (kudos ysoyipek)
-// 0.2.0    2020-04-30 refactor, add writeProtectPin code
-// 0.2.1    2020-06-10 fix library.json
-
-#include "md_FRAM.h"
-
-const uint8_t FRAM_SLAVE_ID_= 0x7C;
-
-/////////////////////////////////////////////////////
+void md_FRAM::write8(uint16_t framAddr, uint8_t value)
+  {
+    Wire.beginTransmission(_i2c_addr);
+    Wire.write(framAddr >> 8);
+    Wire.write(framAddr & 0xFF);
+    Wire.write(value);
+    Wire.endTransmission();
+  }
 //
-// PUBLIC
+uint8_t md_FRAM::read8(uint16_t framAddr)
+  {
+    Wire.beginTransmission(_i2c_addr);
+    Wire.write(framAddr >> 8);
+    Wire.write(framAddr & 0xFF);
+    Wire.endTransmission();
+
+    Wire.requestFrom(_i2c_addr, (uint8_t)1);
+
+    return Wire.read();
+  }
 //
-FRAM::FRAM()
-{}
-
-int FRAM::begin(uint8_t address, int8_t writeProtectPin)
-{
-  if (address < 0x50 || address > 0x57)
+void md_FRAM::getDeviceID(uint16_t *manufacturerID, uint16_t *productID)
   {
-    return FRAM_ERROR_ADDR;
+    uint8_t a[3] = {0, 0, 0};
+    uint8_t results;
+
+    Wire.beginTransmission(MB85RC_SLAVE_ID >> 1);
+    Wire.write(_i2c_addr << 1);
+    results = Wire.endTransmission(false);
+
+    Wire.requestFrom(MB85RC_SLAVE_ID >> 1, 3);
+    a[0] = Wire.read();
+    a[1] = Wire.read();
+    a[2] = Wire.read();
+
+    // Shift values to separate manuf and prod IDs
+    // http://www.fujitsu.com/downloads/MICRO/fsa/pdf/products/memory/fram/MB85RC256V-DS501-00017-3v0-E.pdf
+    *manufacturerID = (a[0] << 4) + (a[1] >> 4);
+    *productID = ((a[1] & 0x0F) << 8) + a[2];
   }
 
-  _address = address;
-  Wire.begin();
-
-  if (writeProtectPin > -1)
-  {
-    _writeProtectPin = writeProtectPin;
-    pinMode(_writeProtectPin, OUTPUT);
-  }
-  return FRAM_OK;
-}
-
-void FRAM::write8(uint16_t memaddr, uint8_t value)
-{
-  uint8_t val = value;
-  writeBlock(memaddr, (uint8_t *)&val, 1);
-}
-
-void FRAM::write16(uint16_t memaddr, uint16_t value)
-{
-  uint16_t val = value;
-  writeBlock(memaddr, (uint8_t *)&val, 2);
-}
-
-void FRAM::write32(uint16_t memaddr, uint32_t value)
-{
-  uint32_t val = value;
-  writeBlock(memaddr, (uint8_t *)&val, 4);
-}
-
-void FRAM::write(uint16_t memaddr, uint8_t * obj, uint16_t size)
-{
-  const int blocksize = 24;
-  uint8_t * p = obj;
-  while (size >= blocksize)
-  {
-    writeBlock(memaddr, p, blocksize);
-    memaddr += blocksize;
-    p += blocksize;
-    size -= blocksize;
-  }
-  // remaining
-  if (size > 0)
-  {
-    writeBlock(memaddr, p, size);
-  }
-}
-
-uint8_t FRAM::read8(uint16_t memaddr)
-{
-  uint8_t val;
-  readBlock(memaddr, (uint8_t *)&val, 1);
-  return val;
-}
-
-uint16_t FRAM::read16(uint16_t memaddr)
-{
-  uint16_t val;
-  readBlock(memaddr, (uint8_t *)&val, 2);
-  return val;
-}
-
-uint32_t FRAM::read32(uint16_t memaddr)
-{
-  uint32_t val;
-  readBlock(memaddr, (uint8_t *)&val, 4);
-  return val;
-}
-
-void FRAM::read(uint16_t memaddr, uint8_t * obj, uint16_t size)
-{
-  const uint8_t blocksize = 24;
-  uint8_t * p = obj;
-  while (size >= blocksize)
-  {
-    readBlock(memaddr, p, blocksize);
-    memaddr += blocksize;
-    p += blocksize;
-    size -= blocksize;
-  }
-  // remainder
-  if (size > 0)
-  {
-    readBlock(memaddr, p, size);
-  }
-}
-
-bool FRAM::setWriteProtect(bool b)
-{
-  if (_writeProtectPin == -1) return false;
-  digitalWrite(_writeProtectPin, b ? HIGH : LOW);
-  return true;
-}
-
-uint16_t FRAM::getManufacturerID()
-{
-  return getMetaData(0);
-}
-
-uint16_t FRAM::getProductID()
-{
-  return getMetaData(1);
-}
-
-uint16_t FRAM::getSize()
-{
-  uint16_t val = getMetaData(2);  // density bits
-  if (val > 0) return 1 << val;
-  return 0;
-}
-
-///////////////////////////////////////////////////////////
 //
-// PRIVATE
+void md_FRAM::writeBlock(uint16_t memaddr, uint8_t * obj, uint8_t size)
+  {
+    // TODO constrain size < 30 ??
+    Wire.beginTransmission(_i2c_addr);
+    Wire.write(memaddr >> 8);
+    Wire.write(memaddr & 0xFF);
+    uint8_t * p = obj;
+    for (uint8_t i = 0; i < size; i++)
+    {
+      Wire.write(*p++);
+    }
+    Wire.endTransmission();
+  }
 //
-
-// metadata is packed as  [....MMMM][MMMMDDDD][PPPPPPPP]
-// M = manufacturerID
-// D = density => memsize = 2^D KB
-// P = product ID (together with D)
-uint16_t FRAM::getMetaData(uint8_t field)
-{
-  if (field > 2) return 0;
-
-  Wire.beginTransmission(FRAM_SLAVE_ID_);
-  Wire.write(_address << 1);
-  Wire.endTransmission(false);
-  int x = Wire.requestFrom(FRAM_SLAVE_ID_, (uint8_t)3);
-  if (x != 3) return -1;
-
-  uint32_t value = 0;
-  value = Wire.read();
-  value |= Wire.read();
-  value |= Wire.read();
-  // MANUFACTURER
-  if (field == 0) return (value >> 12) & 0xFF;
-  // PRODUCT ID
-  if (field == 1) return value & 0x0FFF;
-  // DENSITY
-  if (field == 2) return (value >> 8) & 0x0F;
-  return 0;
-}
-
-void FRAM::writeBlock(uint16_t memaddr, uint8_t * obj, uint8_t size)
-{
-  // TODO constrain size < 30 ??
-  Wire.beginTransmission(_address);
-  Wire.write(memaddr >> 8);
-  Wire.write(memaddr & 0xFF);
-  uint8_t * p = obj;
-  for (uint8_t i = 0; i < size; i++)
+void md_FRAM::readBlock(uint16_t memaddr, uint8_t * obj, uint8_t size)
   {
-    Wire.write(*p++);
+    Wire.beginTransmission(_i2c_addr);
+    Wire.write(memaddr >> 8);
+    Wire.write(memaddr & 0xFF);
+    Wire.endTransmission();
+    Wire.requestFrom(_i2c_addr, size);
+    uint8_t * p = obj;
+    for (uint8_t i = 0; i < size; i++)
+    {
+      *p++ = Wire.read();
+    }
   }
-  Wire.endTransmission();
-}
 
-void FRAM::readBlock(uint16_t memaddr, uint8_t * obj, uint8_t size)
-{
-  Wire.beginTransmission(_address);
-  Wire.write(memaddr >> 8);
-  Wire.write(memaddr & 0xFF);
-  Wire.endTransmission();
-  Wire.requestFrom(_address, size);
-  uint8_t * p = obj;
-  for (uint8_t i = 0; i < size; i++)
-  {
-    *p++ = Wire.read();
-  }
-}
 
-// -- END OF FILE --
+

@@ -197,21 +197,21 @@
 
 //
 // --- classes
-/*
-    md_localIP::md_localIP(uint32_t ip, uint32_t gw, uint32_t sn)
-      {
-        setIP(ip, gw, sn);
-      }
   //
   // ------ class md_localIP --------------------------
-    void md_localIP::setIP(uint32_t ip, uint32_t gw, uint32_t sn)
+    bool md_localIP::setIP(uint32_t ip)
       {
         _IP = ip;
-        _GW = gw;
-        _SN = sn;
-        _stat = LOCIP_OK;
+        _stat = _stat | LOCIP_IP;
+        return WIFI_OK;
       }
-*/
+
+    bool md_localIP::setGW(uint32_t ip)
+      {
+        _IP = ip;
+        _stat = _stat | LOCIP_GW;
+        return WIFI_OK;
+      }
   //
   // ------ class md_NTPTime --------------------------
     bool md_NTPTime::initNTPTime(uint8_t summer)
@@ -286,24 +286,15 @@
         _ssid[0]   = 0;
         _passw[0]  = 0;
         _isinit    = false;
+        _lenlist   = 0;
+        _pssidlist = NULL;
+        _ppwlist   = NULL;
+        _piplist   = NULL;
       }
 
-  /*
     void md_wifi::setIPList(md_localIP* piplist)
       {
         _piplist = piplist;
-              SOUT(" piplist* "); SOUTHEX((uint32_t) _piplist[0].getIP());
-              SOUT("  sizeof "); SOUTHEXLN((uint32_t) sizeof(_piplist[0]));
-        for (uint8_t i = 0; i < 3; i++ )
-          {
-            SOUT(" pipList["); SOUT(i);
-            SOUT("] IP-GW-SN "); SOUTHEX(_piplist[i].getIP());
-            SOUT(" - "); SOUTHEX(_piplist[i].getGW());
-            SOUT(" - "); SOUTHEXLN(_piplist[i].getSN());
-            //piplist += sizeof(md_localIP);
-                SOUT(" piplist* "); SOUTHEX((uint32_t) &_piplist[i]);
-                SOUT("  sizeof "); SOUTHEXLN((uint32_t) sizeof(_piplist[0]));
-          }
       }
 
     bool md_wifi::initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz)
@@ -320,84 +311,81 @@
         return WIFI_OK;
       }
 
-  */
-    bool md_wifi::scanWIFI(ip_list* iplist)
+    bool md_wifi::scanWIFI()
       {
-        //if (!_isinit)
-        //{
-        //  return WIFI_ERR;
-        //}
+        if (!_isinit)
+        {
+          return WIFI_ERR;
+        }
         // Set WiFi to station mode and disconnect from an AP if it was previously connected
 
-        _ssid[0]  = 0;
-        _passw[0] = 0;
-        _locip    = (uint32_t) 0;
-        _gateip   = (uint32_t) 0;
-        _subnet   = (uint32_t) 0;
-        SOUTLN();
-        SOUT(millis()); SOUTLN(" WIFI scan");
+        _ssid[0] = 0;
+        _locip   = (uint32_t) 0;
+        _gateip  = (uint32_t) 0;
+        _subnet  = (uint32_t) 0;
+                SOUTLN();
+                SOUT(millis()); SOUTLN(" WIFI scan");
         usleep(10000);
 
         // WiFi.scanNetworks will return the number of networks found
         int n = WiFi.scanNetworks();
         if (n == 0)
         {
-          SOUTLN("no networks found");
+                SOUTLN("no networks found");
         }
         else
         {
-          SOUT(n); SOUTLN(" networks found");
-          //uint8_t s = 0;
-          ip_cell *pcell = iplist->getCellPointer(0);
+                  SOUT(n); SOUTLN(" networks found");
+          uint8_t s = 0;
           for (uint8_t i = 0; i < n; ++i)
           {
             // Print SSID and RSSI for each network found
-            while (pcell != NULL)
+                    SOUT(i + 1);
+            for ( s = 0; s < _lenlist ; s++ )
               {
                        //SOUT(" "); SOUT(_pssidlist[s]);
-                if (strcmp(WiFi.SSID(i).c_str(), pcell->ssid()) == 0)
+                if (strcmp(WiFi.SSID(i).c_str(), _pssidlist[s]) == 0)
                   {
-                    strncpy(_ssid, pcell->ssid(), NET_MAX_SSID_LEN) ;
-                    strncpy(_passw, pcell->pw(), NET_MAX_PW_LEN) ;
-                            SOUT(" used: ");
-                    if (pcell->locIP() != 0)
+                    memcpy(_ssid, _pssidlist[s], sizeof(LoginTxt_t)) ;
+                    memcpy(_passw, _ppwlist[s], sizeof(LoginTxt_t)) ;
+                            Serial.print(" used: "); Serial.print((char*) _ssid); Serial.print(" - ");
+                    if (_piplist != NULL)
                       {
-                        _locip  = pcell->locIP();
-                        _gateip = pcell->gwIP();
-                        _subnet = pcell->snIP();
+                        _locip  = _piplist[s].getIP();
+                        _gateip = _piplist[s].getGW();
+                        _subnet = _piplist[s].getSN();
                       }
                     break;
                   }
-                pcell = iplist->getNextCellPointer(pcell);
               }
-            if ( strlen(_ssid) > 0 )
+            if ( s >= _lenlist)
               {
-                SOUT("       ");
+                    SOUT("       ");
               }
-            SOUT(WiFi.SSID(i)); SOUT(" ("); SOUT(WiFi.RSSI(i)); SOUT(")");
-            SOUT((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*"); SOUTLN(i);
+                    SOUT(WiFi.SSID(i));
+                    SOUT(" ("); SOUT(WiFi.RSSI(i)); Serial.print(")");
+                    SOUTLN((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
             usleep(10000);
           }
         }
       //  WiFi.disconnect();
         if (strlen(_ssid) > 0) { return WIFI_OK; }
-        else                   { return WIFI_ERR; };
+        else                    { return WIFI_ERR; };
       }
 
     bool md_wifi::startWIFI()
       {
-        SOUT(millis()); SOUTLN(" md_startWIFI");
+                Serial.print(millis());
+                Serial.println(" md_startWIFI");
         if (strlen(_ssid) == 0)
           { // keine SSID
-            SOUT(millis()); SOUTLN(" SSID nicht initialisiert ");
+                    Serial.print(millis());
+                    Serial.println(" SSID nicht initialisiert ");
             return WIFI_ERR;
           }
 
-        SOUT(millis()); SOUT(" "); SOUTHEX(_locip); SOUT(" "); SOUTHEX(_gateip);
-        SOUT(" "); SOUTHEX(_subnet);
-        WiFi.config(_locip, _gateip, _subnet);
         WiFi.begin(_ssid, _passw); // start connection
-        SOUTLN(); SOUT(millis());
+        Serial.println(""); Serial.println(millis());
 
         // Wait for connection
         usleep(_conn_delay);

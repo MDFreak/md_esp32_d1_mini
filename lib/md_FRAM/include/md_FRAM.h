@@ -1,67 +1,57 @@
-#pragma once
-//
-//    FILE: FRAM.h
-//  AUTHOR: Rob Tillaart
-// VERSION: 0.2.1
-//    DATE: 2018-01-24
-// PURPOSE: Arduino library for I2C FRAM
-//     URL: https://github.com/RobTillaart/FRAM_I2C
-//
-// HISTORY:
-// see FRAM.cpp file
-//
+/**************************************************************************/
+/*!
+    @file     Adafruit_FRAM_I2C.h
+    @author   KTOWN (Adafruit Industries)
 
-#include <Arduino.h>
-#include <Wire.h>
+    Software License Agreement (BSD License)
 
-#define FRAM_LIB_VERSION (F("0.2.1"))
+    Copyright (c) 2013, Adafruit Industries
+    All rights reserved.
+ *
+ * 	Adafruit invests time and resources providing this open source code,
+ *  please support Adafruit and open-source hardware by purchasing products from
+ * 	Adafruit!
+ *
+ *
+ *	BSD license (see license.txt)
+*/
+/**************************************************************************/
+#ifndef _MD_FRAM_H_
+  #define _MD_FRAM_H_
 
-#define FRAM_OK               0
-#define FRAM_ERROR_ADDR       -10
+  #if ARDUINO >= 100
+      #include <Arduino.h>
+    #else
+      #include <WProgram.h>
+    #endif
 
-#define FRAM_STAT_ISINIT  1
+  #include <Wire.h>
 
-// format FRAM data organisation
-  #define FRAM_ADDR_LEN   2   // 16 bit
-  // header 16 bytes
-    #define FRAM_ADDR_STAT  0x0000
-    #define FRAM_ADDR_VERS  FRAM_ADDR_STAT + FRAM_ADDR_LEN
-    #define FRAM_ADDR_NEXT  FRAM_ADDR_VERS + FRAM_ADDR_LEN
-    #define FRAM_ADDR_LAST  FRAM_ADDR_VERS + FRAM_ADDR_LEN
-  // static organisation
-    #define FRAM_ADDR_START 0x0010
+  #define MB85RC_DEFAULT_ADDRESS (0x50)  ///<* 1010 + A2 + A1 + A0 = 0x50 default */
+  #define MB85RC_SLAVE_ID (0xF8)         ///< SLAVE ID
 
-class FRAM
-{
-public:
-  FRAM();
+  /*!
+   *    @brief  Class that stores state and functions for interacting with
+   *            I2C FRAM chips
+   */
+  class md_FRAM {
+    public:
+      md_FRAM(void);
 
-  // writeProtectPin is optional
-  int   begin(const uint8_t address = 0x50, int8_t writeProtectPin = -1);
+      boolean begin(uint8_t addr = MB85RC_DEFAULT_ADDRESS);
+      boolean begin(int sda, int scl, uint8_t addr = MB85RC_DEFAULT_ADDRESS);
+      void write8(uint16_t framAddr, uint8_t value);
+      uint8_t read8(uint16_t framAddr);
+      void getDeviceID(uint16_t *manufacturerID, uint16_t *productID);
+      void writeBlock(uint16_t memaddr, uint8_t * obj, uint8_t size);
+      void readBlock(uint16_t memaddr, uint8_t * obj, uint8_t size);
 
-  void  write8(uint16_t memaddr, uint8_t value);
-  void  write16(uint16_t memaddr, uint16_t value);
-  void  write32(uint16_t memaddr, uint32_t value);
-  void  write(uint16_t memaddr, uint8_t * obj, uint16_t size);
+    private:
+      uint8_t _i2c_addr;
+      boolean _framInitialised;
+      uint8_t _sda;
+      uint8_t _scl;
+      bool    _doI2cAutoInit = false;
+  };
 
-  uint8_t  read8(uint16_t memaddr);
-  uint16_t read16(uint16_t memaddr);
-  uint32_t read32(uint16_t memaddr);
-  void     read(uint16_t memaddr, uint8_t * obj, uint16_t size);
-
-  bool     setWriteProtect(bool b);
-
-  uint16_t getManufacturerID();
-  uint16_t getProductID();
-  uint16_t getSize();
-
-private:
-  uint8_t   _address;
-  int8_t    _writeProtectPin = -1;  // default no pin ==> no write protect.
-
-  uint16_t getMetaData(uint8_t id);
-  void writeBlock(uint16_t memaddr, uint8_t * obj, uint8_t size);
-  void readBlock(uint16_t memaddr, uint8_t * obj, uint8_t size);
-};
-
-// -- END OF FILE --
+#endif

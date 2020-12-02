@@ -13,12 +13,14 @@
     #define GEO_RAWMODE   2
 
   //
+  // ******************************************
   // --- debugging selection
     //#define DEBUG_MODE      CFG_DEBUG_STARTUP
     #define DEBUG_MODE      CFG_DEBUG_ACTIONS
     //#define DEBUG_MODE      CFG_DEBUG_DETAILS
 
   //
+  // ******************************************
   // --- board selection
     //#define BOARD   MC_ESP32_D1_R32
     //#define BOARD   MC_AV_NANO_V3
@@ -26,46 +28,42 @@
     #define BOARD    MC_ESP32_Node
 
   //
+  // ******************************************
   // --- board management
     #if !(BOARD ^ MC_ESP32_Node)
       // --- system
         //#define USE_TASKING
-
       //
       // --- network
         #define USE_WIFI
         #define USE_WEBSERVER
-
       //
       // --- user output
         // --- display
             #define USE_DISP
             #if defined(USE_DISP)
-                #define USE_OLED
-                #ifdef USE_OLED
-                    // select I2C device
-                    //#define OLED1 MC_UO_OLED_091_AZ
-                    //#define OLED1 MC_UO_OLED_096_AZ
-                    //#define OLED1 MC_UO_OLED_130_AZ
-
-                    //#define OLED1_GEO  GEO_128_32
-                    //#define OLED1_GEO  GEO_128_64
-                    //#define OLED1_GEO  GEO_RAWMODE
-
-                    //#define OLED2 MC_UO_OLED_091_AZ
-                    //#define OLED2 MC_UO_OLED_096_AZ
-                    #define OLED2 MC_UO_OLED_130_AZ
-
-                    //#define OLED2_GEO  GEO_128_32
-                    #define OLED2_GEO  GEO_128_64
-                    //#define OLED2_GEO  GEO_RAWMODE
-                  #endif //USE_OLED
+                #define USE_OLED_I2C
+                #ifdef USE_OLED_I2C
+                    #define ANZ_OLED   1 // 2 are possible
+                        // select OLED device  GEO_RAWMODE?
+                        // OLEDx_  MC_UO_OLED_091_AZ   GEO_128_32
+                        // OLEDx_  MC_UO_OLED_096_AZ   GEO_128_64
+                        // OLEDx_  MC_UO_OLED_130_AZ   GEO_128_64
+                    #define OLED1
+                    #define OLED1_MC_UO_OLED_130_AZ
+                    #define OLED1_GEO    GEO_128_64
+                    #if (ANZ_OLED > 1)
+                        #define OLED2
+                        #define OLED2_MC_UO_OLED_130_AZ
+                        #define OLED2_GEO    GEO_128_64
+                      #endif
+                  #endif //USE_OLED_I2C
 
                 //#define USE_TFT
                 #ifdef USE_TFT
                     //#define DISP_TFT  MC_UO_TFT1602_GPIO_RO
                     //#define DISP_TFT  MC_UO_TOUCHXPT2046_AZ
-                    //#define DISP_TFT  MC_UO_TFT1602_IIC_XA
+                    //#define DISP_TFT  MC_UO_TFT1602_I2C_XA
                   #endif
               #endif
         //
@@ -73,6 +71,7 @@
           //#define AOUT AOUT_PAS_BUZZ_3V5V
       //
       // --- user input
+        //#define USE_TOUCHSCREEN
         #ifdef  USE_TOUCHSCREEN
             #define USE_TOUCHXPT2046_AZ_3V3
             #define KEYS KEYS_TOUCHXPT2046_AZ_3V3
@@ -80,14 +79,20 @@
 
       //
       // --- sensors
-        // --- temperature, humidity ...
-          #define USE_DS18B20
-          #define USE_BME280
+        #define USE_DS18B20_1W
+        #if defined(USE_DS18B20_1W)
+            #define ANZ_DS18B20     1
+          #endif
+        #define USE_BME280_I2C
+        #if defined(USE_BME280_I2C)
+            #define ANZ_BME280     1
+          #endif
       //
       // --- memories
-        // --- FRAM
-          //#define USE_FRAM_32K_I2C
-
+        #define USE_FRAM_I2C
+        #if defined( USE_FRAM_I2C )
+            #define ANZ_FRAM        1
+          #endif
       //
       // --- pins, connections
         #define PIN_BOARD_LED         2
@@ -107,28 +112,22 @@
 
             //#define PIN_BUZZ            21
         // --- sensors
-          #ifdef USE_DS18B20
+          #ifdef USE_DS18B20_1W
               #define DS_ONEWIRE_PIN  27
             #endif
           #endif
 
       // --- I2C
-        #define ANZ_IIC          2
-        #define PIN_I2C1_SDA          21
-        #define PIN_I2C1_SCL          22
-        #define PIN_I2C2_SDA          25
-        #define PIN_I2C2_SCL          26
-
-        #ifdef OLED1
-            #define I2C_ADDR_OLED1  0x3C
-          #endif
-        #ifdef OLED2
-            #define I2C_ADDR_OLED2  0x3C
-          #endif
-
-        #define I2C_ADDR_FRAM       0x50
-
-        #define I2C_ADDR_BME280     0x76
+        // --- board connection
+          #define ANZ_I2C           2
+          #define USE_I2C1          1
+          #define PIN_I2C1_SDA      21
+          #define PIN_I2C1_SCL      22
+          #if ( ANZ_I2C > 1 )
+              #define USE_I2C2      2
+              #define PIN_I2C2_SDA  25
+              #define PIN_I2C2_SCL  26
+            #endif
     //
     #if !(BOARD ^ MC_ESP32_D1_R32)
         #define USE_TASKING
@@ -138,19 +137,19 @@
       // --- user interface
         #define USE_DISP
         #ifdef USE_DISP
-            #define USE_OLED
-            #ifdef USE_OLED
+            #define USE_OLED_I2C
+            #ifdef USE_OLED_I2C
                 // select I2C device
                 #define OLED1 DISP_OLED_130_AZ_3V3
                   #define OLED1_I2C_ADDR  0x3C
                 //#define OLED2 DISP_OLED_091_AZ_3V3
                   #define OLED2_I2C_ADDR  0x3C
                 //#define OLED?  DISP_OLED_096_AZ_3V3
-              #endif //USE_OLED
+              #endif //USE_OLED_I2C
 
             //#define USE_TFT
             #ifdef USE_TFT
-                    //#define USE_TFT1602_IIC_XA_3V3
+                    //#define USE_TFT1602_I2C_XA_3V3
                     //#define USE_TOUCHXPT2046_AZ_3V3
               #endif
           #endif
@@ -186,6 +185,7 @@
           #endif // USE_KEYPADSHIELD
       #endif // BOARD
   //
+  // ******************************************
   // --- specification
     // --- system
       // --- error status bits
@@ -195,7 +195,7 @@
         #define ERRBIT_NTPTIME   0x00000008     // NTP timeserver connection
       //
       // --- generic
-        #define SCAN_IIC   128
+        #define SCAN_I2C   128
         #define CHECK_I2C_DEVICES
         #define UTC_SEASONTIME UTC_WINTERTIME
         //#define UTC_SEASONTIME UTC_SUMMERTIME
@@ -204,6 +204,91 @@
             #define TASK_SLICE_T  5000ul   // task beat [us]
           #endif // USE_TASKING
     //
+    // --- I2C interface
+      // --- address configuration
+        #if defined( USE_OLED_I2C )
+            #define I2C_ADDR_OLED1      I2C_OLED
+            #define I2C_OLED1_USE_I2C2
+              #if defined( I2C_OLED1_USE_I2C1 )
+                #define I2C_OLED1       I2C1
+                #define I2C_SCL_OLED1   PIN_I2C1_SCL
+                #define I2C_SDA_OLED1   PIN_I2C1_SDA
+              #else
+                  #define I2C_OLED1     I2C2
+                  #define I2C_SCL_OLED1 PIN_I2C2_SCL
+                  #define I2C_SDA_OLED1 PIN_I2C2_SDA
+                #endif
+            #if (( ANZ_I2C > 1 ) && ( ANZ_OLED > 1 ))
+                #define I2C_ADDR_OLED2      I2C_OLED
+                #define I2C_OLED2_USE_I2C2
+                  #if defined( I2C_OLED2_USE_I2C1 )
+                    #define I2C_OLED2       I2C1
+                    #define I2C_SCL_OLED2   PIN_I2C1_SCL
+                    #define I2C_SDA_OLED2   PIN_I2C1_SDA
+                  #else
+                      #define I2C_OLED2     I2C2
+                      #define I2C_SCL_OLED2 PIN_I2C2_SCL
+                      #define I2C_SDA_OLED2 PIN_I2C2_SDA
+                    #endif
+              #endif
+          #endif
+        //
+        #if defined( USE_FRAM_I2C )
+            #define I2C_ADDR_FRAM1          I2C_FRAM
+            #define I2C_FRAM1_USE_I2C1
+              #if defined( I2C_FRAM1_USE_I2C1 )
+                #define I2C_FRAM1           I2C1
+                #define I2C_SCL_FRAM1       PIN_I2C1_SCL
+                #define I2C_SDA_FRAM1       PIN_I2C1_SDA
+              #else
+                  #define I2C_FRAM1         I2C2
+                  #define I2C_SCL_FRAM1     PIN_I2C2_SCL
+                  #define I2C_SDA_FRAM1     PIN_I2C2_SDA
+                #endif
+            #if (( ANZ_I2C > 1 ) && ( ANZ_FRAM > 1 ))
+              #define I2C_ADDR_FRAM2        I2C_FRAM
+                #define I2C_FRAM2_USE_I2C2
+                  #if defined( I2C_FRAM2_USE_I2C1 )
+                    #define I2C_FRAM2       I2C1
+                    #define I2C_SCL_FRAM2   I2C1_SCL
+                    #define I2C_SDA_FRAM2   I2C1_SDA
+                  #else
+                      #define I2C_FRAM2     I2C2
+                      #define I2C_SCL_FRAM2 I2C2_SCL
+                      #define I2C_SDA_FRAM2 I2C2_SDA
+                    #endif
+              #endif
+          #endif
+        //
+        #if defined( USE_BME280_I2C )
+            #define I2C_ADDR_BME2801        I2C_BME280
+            #define I2C_BME2801_USE_I2C1
+              #if defined( I2C_BME2801_USE_I2C1 )
+                #define I2C_BME2801         I2C1
+                #define I2C_SCL_BME2801     PIN_I2C1_SCL
+                #define I2C_SDA_BME2801     PIN_I2C1_SDA
+              #else
+                  #define I2C_BME2801       I2C2
+                  #define I2C_SCL_BME2801   PIN_I2C2_SCL
+                  #define I2C_SDA_BME2801   PIN_I2C2_SDA
+                #endif
+            #if (( ANZ_I2C > 1 ) && ( ANZ_BME280 > 1 ))
+                #define I2C_ADDR_BME2802      I2C_BME280
+                #define I2C_BME2802_USE_I2C2
+                  #if defined( I2C_BME2802_USE_I2C1 )
+                    #define I2C_BME2802       I2C1
+                    #define I2C_SCL_BME2802   I2C1_SCL
+                    #define I2C_SDA_BME2802   I2C1_SDA
+                  #else
+                      #define I2C_BME2802     I2C2
+                      #define I2C_SCL_BME2802 I2C2_SCL
+                      #define I2C_SDA_BME2802 I2C2_SDA
+                    #endif
+              #endif
+          #endif
+
+    //
+    // ---------------------------------------------
     // --- user interface
       // --- display output
         #define DISP_CYCLE       1000ul   // Intervallzeit [us]
@@ -249,28 +334,43 @@
       // --- display
         #ifdef USE_DISP
             #define USE_STATUS
-            #ifdef USE_OLED
-                #ifdef OLED1
-                    //#define OLED1_I2C_ADDR  0x3C
-                    #ifdef USE_STATUS
-                        #define USE_STATUS1
+            #if defined( USE_OLED_I2C )
+                #if defined( OLED1 )
+                    #define USE_STATUS1
+                    #if defined( OLED1_MC_UO_OLED_091_AZ )
+                       #define DISP1_MAXCOLS  OLED_091_MAXCOLS
+                       #define DISP1_MAXROWS  OLED_091_MAXROWS
+                      #endif
+                    #if defined( OLED1_MC_UO_OLED_096_AZ )
+                        #define DISP1_MAXCOLS  OLED_096_MAXCOLS
+                        #define DISP1_MAXROWS  OLED_096_MAXROWS
+                      #endif
+                    #if defined( OLED1_MC_UO_OLED_130_AZ )
+                        #define DISP1_MAXCOLS  OLED_130_MAXCOLS
+                        #define DISP1_MAXROWS  OLED_130_MAXROWS
                       #endif
                   #endif
-                #ifdef OLED2
-                    //#define OLED2_I2C_ADDR  0x3C
-                    #ifdef USE_STATUS
-                        #define USE_STATUS2
+                #if defined( OLED2 )
+                    #define USE_STATUS2
+                    #if defined( OLED2_MC_UO_OLED_091_AZ )
+                        #define DISP2_MAXCOLS  OLED_091_MAXCOLS
+                        #define DISP2_MAXROWS  OLED_091_MAXROWS
+                      #endif
+                    #if defined( OLED2_MC_UO_OLED_096_AZ )
+                        #define DISP2_MAXCOLS  OLED_096_MAXCOLS
+                        #define DISP2_MAXROWS  OLED_096_MAXROWS
+                      #endif
+                    #if defined( OLED2_MC_UO_OLED_130_AZ )
+                        #define DISP2_MAXCOLS  OLED_130_MAXCOLS
+                        #define DISP2_MAXROWS  OLED_130_MAXROWS
                       #endif
                   #endif
-                #define DISP1_MAXCOLS 25
-                #define DISP1_MAXROWS 6
-                #define DISP2_MAXCOLS 25
-                #define DISP2_MAXROWS 6
+
               #endif
-            #ifdef USE_TOUCHSCREEN
+            #if defined( USE_TOUCHSCREEN )
               #endif // USE_TOUCHSCREEN
 
-            #ifdef USE_TFT
+            #if defined( USE_TFT )
                 #if !(DISP_TFT ^ MC_UO_TOUCHXPT2046_AZ)
                     #define DISP_ORIENT    0      // 0:USB oben, 1:USB links, 2:USB unten, 3:USB rechts
                     #define DATE_DISP_COL  0
@@ -305,7 +405,6 @@
                   #endif
               #endif
           #endif // DISP
-
         //
       //
       // --- acoustic output
@@ -351,22 +450,20 @@
 
     //
     // --- memories
-      #ifdef USE_FRAM_32K_I2C
-          #define FRAM_SIZE     0x8000
-          #define FRAM_ADDR     0x50 //0x7C
-          #define FRAM_I2C_SCL  I2C1_SCL
-          #define FRAM_I2C_SDA  I2C3_SDA
+      #ifdef USE_FRAM_I2C
+          #define SIZE_FRAM     0x8000
         #endif
 
     //
     // --- sensors
-      #ifdef USE_DS18B20
+      #ifdef USE_DS18B20_1W
           #define DS_T_PRECISION  9
           #define DS18B20_ANZ     1
         #endif
 
-      #ifdef USE_BME280
+      #ifdef USE_BME280_I2C
 
         #endif
   //
+  // ******************************************
 #endif // _PRJ_CONFIG_H_

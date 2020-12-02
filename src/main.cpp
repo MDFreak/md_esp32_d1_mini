@@ -16,7 +16,16 @@
                                + ERRBIT_TOUCH
                              #endif
                              ;
+    TwoWire i2c1 = TwoWire(0);
+    #if ( ANZ_I2C > 1 )
+        TwoWire i2c1 = TwoWire(1);
+      #endif
+    //
+    #ifdef SCAN_I2C
+      uint8_t       devI2C[ANZ_I2C][SCAN_I2C];
+      #endif
 
+//
     #ifdef USE_DISP
         msTimer       dispT  = msTimer(DISP_CYCLE);
         uint32_t      ze     = 1;      // aktuelle Schreibzeile
@@ -24,10 +33,7 @@
         String        outStr;
       #endif
 
-    #ifdef SCAN_IIC
-      uint8_t       devIIC[ANZ_IIC][SCAN_IIC];
-      #endif
-
+        //
     #ifdef USE_STATUS
       msTimer     statT  = msTimer(STAT_TIMEDEF);
       char        statOut[DISP1_MAXCOLS + 1] = "";
@@ -35,47 +41,38 @@
       //char        timeOut[STAT_LINELEN + 1] = "";
       #endif
 
+  //
   // ------ user interface ---------------
     #ifdef USE_TOUCHSCREEN
         md_touch touch = md_touch();
       #endif
 
+    //
     #ifdef USE_KEYPADSHIELD
         md_kpad kpad(KEYS_ADC);
         uint8_t key;
       #endif // USE_KEYPADSHIELD
 
+    //
     #ifdef USE_BUZZER
         md_buzzer     buzz       = md_buzzer();
       #endif // USE_BUZZER
 
-    #ifdef USE_OLED
+    //
+    #ifdef USE_OLED_I2C
         #ifdef OLED1
-            #if !(OLED1_GEO ^ GEO_128_32)
-              md_oled oled1 = md_oled((uint8_t) I1C_ADDR_OLED1, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C1_SCL, GEOMETRY_128_32);
-            #endif
-            #if !(OLED1_GEO ^ GEO_128_64)
-              md_oled oled1 = md_oled((uint8_t) I1C_ADDR_OLED1, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_128_64);
-            #endif
-            #if !(OLED1_GEO ^ GEO_RAWMODE)
-              md_oled oled1 = md_oled((uint8_t) I1C_ADDR_OLED1, (uint8_t) PIN_I2C1_SDA, (uint8_t) PIN_I1C2_SCL, GEOMETRY_RAWMODE);
-            #endif
+            md_oled oled1 = md_oled((uint8_t) I2C_ADDR_OLED1, (uint8_t) I2C_SDA_OLED1,
+                                    (uint8_t) I2C_SCL_OLED1, (OLEDDISPLAY_GEOMETRY) OLED1_GEO);
           #endif
         #ifdef OLED2
-            #if !(OLED2_GEO ^ GEO_128_32)
-              md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_32);
-            #endif
-            #if !(OLED2_GEO ^ GEO_128_64)
-              md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_128_64);
-            #endif
-            #if !(OLED2_GEO ^ GEO_RAWMODE)
-              md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) PIN_I2C2_SDA, (uint8_t) PIN_I2C2_SCL, GEOMETRY_RAWMODE);
-            #endif
+            md_oled oled2 = md_oled((uint8_t) I2C_ADDR_OLED2, (uint8_t) I2C_SDA_OLED2,
+                                    (uint8_t) I2C_SCL_OLED2, (OLEDDISPLAY_GEOMETRY) OLED2_GEO);
           #endif
         msTimer oledT   = msTimer(DISP_CYCLE);
         uint8_t oledIdx = 0;
-      #endif //USE_OLED
+      #endif //USE_OLED_I2C
 
+    //
     #if (defined(USE_TFT1602_GPIO_RO_3V3) || defined(USE_TFT1602_GPIO_RO_3V3))
         LiquidCrystal  lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
         void*          plcd = (void*) &lcd;
@@ -129,21 +126,25 @@
           #endif // USE_WEBSERVER
       #endif
 
+    //
     #if defined(USE_WEBSERVER)
         msTimer servT = msTimer(WEBSERVER_CYCLE);
       #endif // USE_WEBSERVER
 
   // ------ sensors ----------------------
-    #ifdef USE_DS18B20
+    #if defined( USE_DS18B20_1W )
         OneWire dsOneWire(DS_ONEWIRE_PIN);
         DallasTemperature dsSensors(&dsOneWire);
         DeviceAddress     dsAddr[DS18B20_ANZ];
         float dsTemp[DS18B20_ANZ];
       #endif
-
+    //
+    #if defined( USE_BME280_I2C )
+        Adafruit_BME280 bme;
+      #endif
   // ------ memories
-    #ifdef USE_FRAM_32K_I2C
-        FRAM fram = FRAM();
+    #ifdef USE_FRAM_I2C
+        md_FRAM fram = md_FRAM();
       #endif
 // --- private prototypes
   // ------ user interface -----------------
@@ -193,11 +194,11 @@
                   #if defined(USE_TOUCHXPT2046_AZ_3V3)
                     touch.wrStatus(msg);
                     #endif
-                  #if defined(USE_OLED)
-                      #ifdef USE_STATUS1
+                  #if defined(USE_OLED_I2C)
+                      #if defined( USE_STATUS1 )
                           oled1.wrStatus(msg);
                         #endif
-                      #ifdef USE_STATUS2
+                      #if defined( USE_STATUS2 )
                           oled2.wrStatus(msg);
                         #endif
                             #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
@@ -216,56 +217,6 @@
         void dispStatus(const char* msg)
           {
             dispStatus((String) msg);
-            /* old
-              #ifdef USE_STATUS
-                size_t statLen = strlen(msg);
-                bool   doIt    = false;
-
-                memset(statOut, ' ', DISP1_MAXCOLS);
-                if (statLen)
-                  {
-                    if ( statLen > DISP1_MAXCOLS)
-                      statLen = DISP1_MAXCOLS;
-                    memcpy(statOut, msg, statLen);
-                    statOn = true;
-                    statT.startT();
-                    doIt = true;    // output statOut
-                    statT.startT();
-                  }
-                else // empty input
-                  if (statOn && statT.TOut())
-                    statOn = false;
-
-                if (!statOn) // disp actual time
-                  {
-                    sprintf(statOut,"%02d.%02d. %02d:%02d:%02d ", day(), month(), hour(), minute(), second());
-                    doIt = true;
-                  }
-                if (doIt)
-                  {
-                    #if defined(USE_TOUCHXPT2046_AZ_3V3)
-                      touch.wrStatus(msg);
-                      #endif
-                    #if defined(USE_OLED)
-                      #ifdef USE_STATUS1
-                          oled1.wrStatus(statOut);
-                        #endif
-                      #ifdef USE_STATUS2
-                          oled2.wrStatus(statOut);
-                        #endif
-                            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                              SOUT("  md_error="); SOUTLN(md_error);
-                            #endif
-                      #endif
-                    #if defined(USE_TFT)
-                      mlcd.wrStatus((char*) statOut);
-                            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                              SOUT("  md_error="); SOUTLN(md_error);
-                            #endif
-                      #endif // USE_DISP
-                  }
-                #endif // USE_STATUS
-            */
           }
 
         void dispText(char* msg, uint8_t col, uint8_t row, uint8_t len)
@@ -339,7 +290,7 @@
                   #endif
                 //
                 #if defined (OLED1)
-                    oled1.begin(GEOMETRY_128_32);
+                    oled1.begin((uint8_t) DISP1_MAXCOLS, (uint8_t) DISP1_MAXROWS);
                   #endif
                 //
                 #if defined (OLED2)
@@ -507,21 +458,21 @@
                 SOUTLN(); SOUTLN("setup start ...");
               #endif
 
-          #ifdef SCAN_IIC
+          #ifdef SCAN_I2C
             uint8_t addr = 0;
             // reset array
-            for ( n= 0 ; n < ANZ_IIC ; n++)
-              for (uint8_t i=0 ; i < SCAN_IIC ; i++)
-                devIIC[n][i] = 0;
+            for ( n= 0 ; n < ANZ_I2C ; n++)
+              for (uint8_t i=0 ; i < SCAN_I2C ; i++)
+                devI2C[n][i] = 0;
 
             // check I2C1 for devices
-            while (addr < SCAN_IIC)
+            while (addr < SCAN_I2C)
               {
-                addr = scanIIC(0, addr, PIN_I2C1_SDA, PIN_I2C1_SCL);
-                if ((0 < addr) && (addr < SCAN_IIC))
+                addr = scanI2C(0, addr, PIN_I2C1_SDA, PIN_I2C1_SCL);
+                if ((0 < addr) && (addr < SCAN_I2C))
                   {
-                    devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
-                    devIIC[0][0]++;
+                    devI2C[0][addr] = I2C_DEV_NN;  // unknown device present
+                    devI2C[0][0]++;
                     addr++;
                   }
               }
@@ -529,13 +480,13 @@
 
             #ifdef PIN_I2C2_SDA
               addr = 0;
-              while (addr < SCAN_IIC)
+              while (addr < SCAN_I2C)
                 {
-                  addr = scanIIC(1, addr, PIN_I2C2_SDA, PIN_I2C2_SCL);
-                  if ((0 < addr) && (addr < SCAN_IIC))
+                  addr = scanI2C(1, addr, PIN_I2C2_SDA, PIN_I2C2_SCL);
+                  if ((0 < addr) && (addr < SCAN_I2C))
                     {
-                      devIIC[0][addr] = IIC_DEV_NN;  // unknown device present
-                      devIIC[0][0]++;
+                      devI2C[0][addr] = I2C_DEV_NN;  // unknown device present
+                      devI2C[0][0]++;
                       addr++;
                     }
                 }
@@ -581,8 +532,8 @@
       //
       // --- sensors
         // temp. sensor DS18D20
-          #ifdef USE_DS18B20
-                    SOUT(millis()); SOUTLN(" DS18D20 ... " );
+          #ifdef USE_DS18B20_1W
+                    SOUT(millis()); SOUT(" DS18D20 ... " );
                 dsSensors.begin();
                 getDS18D20Str(outStr);
                 dispStatus(outStr);
@@ -591,88 +542,17 @@
       //
       // --- memories
         // FRAM
-          #ifdef USE_FRAM_32K_I2C  // NIO funktioniert nicht
-              /*
-                uint8_t myaddr = FRAM_ADDR;
-                #if defined(CHECK_I2C_DEVICES)
-                    #if (FRAM_I2C_SDA == I2C2_SDA)
-                        cnt = 0;
-                        while (cnt < devIIC[1][0])
-                          {
-                            for ( n = 0 ; n < ANZ_IIC ; n++ )
-                              {
-                                if (devIIC[1][n] > 0)
-                                  {
-                                    Serial.print("test I2C addr "); Serial.println(n);
-                                    if (fram.begin(n))
-                                      {
-                                        Serial.print("found I2C FRAM addr "); Serial.print(n);
-                                        devIIC[1][n] = IIC_FRAM_3V5V;
-                                        myaddr = n;
-                                      }
-                                  }
-                              }
-                          }
-                      #endif
-                  #endif
-              */
+          #ifdef USE_FRAM_I2C  // NIO funktioniert nicht
             // Read the first byte
-            SOUT("FRAM addr "); SOUTHEX(FRAM_ADDR);
-            int ret = fram.begin(FRAM_ADDR, NN);
-            switch (ret)
+            SOUT("FRAM addr "); SOUTHEX(I2C_ADDR_FRAM1);
+            bool ret = !fram.begin(I2C_SDA_FRAM1, I2C_SCL_FRAM1, I2C_ADDR_FRAM1);
+            if (ret == ISOK)
               {
-                case 0:
-                  {
-                    SOUT(" status ");
-                    // read fram status
-                    uint16_t val = (uint16_t) fram.read8(0x00);
-                    if (val == FRAM_STAT_ISINIT)
-                      {
-                        SOUT("is init - next addr ");
-                        val = fram.read16(0x01);
-                        SOUTHEX(val); SOUTLN();
-                      }
-                    else
-                      {
-                        SOUT("initializing next addr ");
-                        fram.write8 (FRAM_ADDR_STAT, FRAM_STAT_ISINIT);
-                        fram.write8 (FRAM_ADDR_VERS, FRAM_STAT_ISINIT);
-                        fram.write16(FRAM_ADDR_NEXT,FRAM_ADDR_START);
-                        SOUTHEX(FRAM_ADDR_START);
-                      }
-
-                    // dump the entire 32K of memory!
-                    uint8_t v;
-                    for (uint16_t a = 0; a < 128; a++)
-                      {
-                        v = fram.read8(a);
-                        if ((a % 32) == 0)
-                          {
-                            SOUT("\n ");
-                            if (a < 0x10) { SOUT('0'); }
-                            SOUTHEX(a); SOUT(": ");
-                          }
-                        //Serial.print("0x");
-                        if (v < 0x1) { SOUT('0'); }
-                        SOUTHEX(v); SOUT(" ");
-                      }
-                    break;
-                  }
-                default:
-                  SOUT(" ERR "); SOUTLN(ret);
-                  break;
-              }
-
-
-
-            /*  uint16_t prodID = 0;
-                uint16_t manuID = 0;
-                    SOUT(millis()); SOUT(" FRAM addr "); SOUTLN(FRAM_ADDR);
-                fram.begin(FRAM_ADDR);
+                SOUT(" ok ProdID= ");
+                uint16_t prodID, manuID;
                 fram.getDeviceID(&manuID, &prodID);
-                    SOUT("FRAM ProdID 0x"); Serial.print(prodID, HEX);
-                    SOUT("  ManuID 0x"); Serial.println(manuID, HEX);
-              */
+                SOUT(" product "); SOUT(prodID); SOUT(" producer "); SOUTLN(manuID);
+              }
             #endif
       //
       // --- finish setup
@@ -843,7 +723,7 @@
 // --- subroutines
   void getDS18D20Str(String outS)
     {
-      #ifdef USE_DS18B20
+      #ifdef USE_DS18B20_1W
           dsSensors.requestTemperatures(); // Send the command to get temperatures
           for (uint8_t i = 0 ; i < DS18B20_ANZ ; i++ )
             {
@@ -852,6 +732,22 @@
               else       { outStr += "    T2  ";}
               outStr += dsTemp[i];
             }
+        #endif
+    }
+
+  void getBME280Str(String outS)
+    {
+      #ifdef USE_BME280_I2C
+          /*
+          dsSensors.requestTemperatures(); // Send the command to get temperatures
+          for (uint8_t i = 0 ; i < DS18B20_ANZ ; i++ )
+            {
+              dsTemp[i] = dsSensors.getTempCByIndex(i);
+              if (i < 1) { outStr  = "T1  "; }
+              else       { outStr += "    T2  ";}
+              outStr += dsTemp[i];
+            }
+          */
         #endif
     }
 

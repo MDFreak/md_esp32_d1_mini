@@ -1,32 +1,36 @@
-#include <wire.h>
 #include <md_util.h>
-#include <md_defines.h>
+#include <wire.h>
+
 
 // TwoWire I2Cone = TwoWire(0);
 // TwoWire I2Ctwo = TwoWire(1);
+//#define _MT_UTIL_DEBUG
 
 //--------------------------
 // Setzen / Loeschen eines Bit in einer 16-Bit Flags-Wort
+uint16_t clrBit(const uint16_t inWert, const uint16_t inBit)
+  {
+    uint16_t ret = inWert & (0xffff ^ inBit);
+    #if defined( _MT_UTIL_DEBUG )
+      SOUT(millis()); SOUT(" setBit: inWert= "); SOUTHEX(inWert);
+      SOUT("  inBit="); SOUT(inBit); SOUT(" ret= "); SOUTHEXLN(ret)
+    #endif
+    return ret;
+  }
+
 uint16_t setBit(const uint16_t inWert, const uint16_t inBit, const bool inVal)
   {
-    int ret;
-    if (inVal)    // Error gefunden
-    { // Fehler setzen
-      ret = inWert | inBit;
-    }
-    else
-    { // Fehler loeschen
-      ret = inWert & (0xffff ^ inBit);
-    }
-  /*
-    #ifdef SERIAL_DEBUG
-      Serial.print("  inWert="); Serial.print(inWert);
-      Serial.print("  inBit="); Serial.print(inBit);
-      Serial.print("  !inBit="); Serial.print(0xffff ^ inBit);
-      Serial.print("  inVal="); Serial.print(inVal);
-      Serial.print("  ret="); Serial.print(ret);
+
+    if (inVal == 0)
+      {
+        return clrBit(inWert, inBit);
+      }
+
+    uint16_t ret = inWert | inBit;
+    #if defined( _MT_UTIL_DEBUG )
+      SOUT(millis()); SOUT(" setBit: inWert= "); SOUTHEX(inWert);
+      SOUT("  inBit="); SOUT(inBit); SOUT(" ret= "); SOUTHEXLN(ret);
     #endif
-  */
     return ret;
   }
 
@@ -35,9 +39,10 @@ uint16_t setBit(const uint16_t inWert, const uint16_t inBit, const bool inVal)
 uint8_t scanIIC(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
   {
     uint8_t i = 0;
-    TwoWire I2C = TwoWire(no);
+    TwoWire I2C = TwoWire(no-1);
     I2C.begin(sda,scl,400000);
-    SOUT("Scanning I2C Addresses Channel "); SOUT(no);
+    Serial.println();
+    Serial.print("Scanning I2C Addresses Channel "); Serial.print(no);
     //uint8_t cnt=0;
     for(i = start; i < 128 ; i++)
       {
@@ -45,14 +50,14 @@ uint8_t scanIIC(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
         uint8_t ec=I2C.endTransmission(true);
         if(ec==0)
           {
-            SOUT(" device at address 0x");
-            if (i<16) { SOUT('0'); }
-            SOUTHEX(i);
+            Serial.print(" device at address 0x");
+            if (i<16) Serial.print('0');
+            Serial.print(i, HEX);
             break;
           }
       }
     I2C.~TwoWire();
-    SOUTLN();
+    Serial.println();
     return i;
   }
 

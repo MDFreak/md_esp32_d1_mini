@@ -24,6 +24,9 @@
 
   #include <linked_list.hpp>
 
+  #define NET_MAX_SSID_LEN 14
+  #define NET_MAX_PW_LEN   14
+
   class ip_cell : public md_cell
     {
       private:
