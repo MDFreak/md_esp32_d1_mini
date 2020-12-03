@@ -10,6 +10,13 @@
  * Dependecies:
  *   md_defines.h    (utility intern)
  *   linked_list.cpp implementation
+ *-----------------------------------------------------------------------
+ * Description:
+ *   Primitives for handling linked lists
+ *   - only void-pointers are connected with attributes
+ *   - no extra memory allocation is done
+ *   - derivatives with specified types have to be introduced
+ *   goal is small footprint with high performance
  ************************************************************************
  * Version| Date   | Changes                                    | Autor
  *-----------------------------------------------------------------------
@@ -23,32 +30,45 @@
   #include <Arduino.h>
   #include <md_defines.h>
 
-  class md_cell           /* Abstrakte Basisklasse fuer Listenelemente */
-    {
-      protected:
-        md_cell    *_pNext;             // Pointer auf naechstes Listenelement
+  #define DICT_MAX_NAME_LEN 14
 
-        md_cell();   // Konstruktor
+  #define MD_DEBUG          TRUE
+  #define DICT_DEBUG        TRUE
 
-      public:
-        friend class md_list;
-    };
+  // --- base classes md_cell, md_list
+    class md_cell           /* Abstrakte Basisklasse fuer Listenelemente */
+      {
+        protected:
+          void* _pNext = NULL;
+          void* _pPriv = NULL;             // Pointer auf naechstes Listenelement
 
+        public:
+          md_cell();
+
+          void* pNext();
+          void* pPriv();
+          void  setNext(void* pNext);
+          void  setPriv(void* pPriv);
+      };
+
+    //
+    class md_list
+      {
+        protected:
+          md_cell* _pFirst = NULL;
+          md_cell* _pLast  = NULL;
+          uint16_t _count  = 0;
+
+        public:
+          md_list();  // Konstruktor
+          ~md_list();
+          uint16_t count (); //return count
+          void*    pFirst();
+          void*    pLast ();
+          uint16_t add   ( void* pCell ); //return count
+          uint16_t remove( void* pCell ); //return count
+
+      };
   //
-  class md_list
-    {
-      private:
-        md_cell     *_pFirst;
-        md_cell     *_pLast;
-
-      public:
-        md_list();  // Konstruktor
-        ~md_list();
-        void      append( md_cell *pCell );      // An Ende anhaengen
-        md_cell*  getCellPointer( unsigned short index ); // Pointer auf ein Listenelement holen
-        md_cell*  getNextCellPointer( md_cell *pCell ); /* Pointer auf das naechste Listenelement holen */
-        md_cell*  removeFirstCell(); /* Erstes Element aus der Liste entnehmen und Pointer auf dieses Element zurueckgeben */
-
-    };
 
 #endif

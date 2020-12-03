@@ -27,6 +27,8 @@
       #define UTC_SUMMERTIME    1
       #define UTC_WINTERTIME    0
 
+      #define DEBUG   TRUE
+      #define NODEBUG FALSE
     //
     // **********************************************
     // --- macros
@@ -128,8 +130,8 @@
     // **********************************************
     // --- configuration and HW spezific defines
       // --- I2C devices
-          #define  I2C1                     0
-          #define  I2C2                     1
+          #define  I2C1                     0           // I2C device 1
+          #define  I2C2                     1           // I2C device 2
           #define  I2C_TFT1602_IIC_XA_3V3   U_3V3  + 0
           #define  I2C_OLED                 0x3C
           #define  I2C_FRAM                 0x50

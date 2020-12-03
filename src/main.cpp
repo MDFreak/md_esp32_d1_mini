@@ -18,13 +18,13 @@
                              ;
     TwoWire i2c1 = TwoWire(0);
     #if ( ANZ_I2C > 1 )
-        TwoWire i2c1 = TwoWire(1);
+        TwoWire i2c2 = TwoWire(1);
       #endif
     //
-    #ifdef SCAN_I2C
+/*    #ifdef SCAN_I2C
       uint8_t       devI2C[ANZ_I2C][SCAN_I2C];
       #endif
-
+*/
 //
     #ifdef USE_DISP
         msTimer       dispT  = msTimer(DISP_CYCLE);
@@ -128,6 +128,7 @@
 
     //
     #if defined(USE_WEBSERVER)
+        md_server webMD = md_server();
         msTimer servT = msTimer(WEBSERVER_CYCLE);
       #endif // USE_WEBSERVER
 
@@ -201,9 +202,7 @@
                       #if defined( USE_STATUS2 )
                           oled2.wrStatus(msg);
                         #endif
-                            #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                              SOUT("  md_error="); SOUTLN(md_error);
-                            #endif
+                           //SOUT("  md_error="); SOUTLN(md_error);
                     #endif
                   #if defined(USE_TFT)
                       mlcd.wrStatus((char*) statOut);
@@ -327,15 +326,15 @@
           if (startup)
             {
               ip_list ipList = ip_list(); // temporary object
-              SOUT(millis()); SOUT(" created ipList "); SOUTHEXLN((int) &ipList);
-              SOUT(millis()); SOUTLN(" setup add WIFI 0");
+              SOUT(millis()); SOUT(" setup startWIFI created ipList "); SOUTHEXLN((int) &ipList);
+              SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 0");
               ipList.append(WIFI_FIXIP0, WIFI_GATEWAY0, WIFI_SUBNET, WIFI_SSID0, WIFI_SSID0_PW);
               #if (WIFI_ANZ_LOGIN > 1)
-                  SOUT(millis()); SOUTLN(" setup add WIFI 1");
+                  SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 1");
                   ipList.append(WIFI_FIXIP1, WIFI_GATEWAY1, WIFI_SUBNET, WIFI_SSID1, WIFI_SSID1_PW);
                 #endif
               #if (WIFI_ANZ_LOGIN > 2)
-                  SOUT(millis()); SOUTLN(" setup add WIFI 2");
+                  SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 2");
                   ipList.append(WIFI_FIXIP2, WIFI_GATEWAY2, WIFI_SUBNET, WIFI_SSID2, WIFI_SSID2_PW);
                 #endif
               #if (WIFI_ANZ_LOGIN > 3)
@@ -346,7 +345,32 @@
                   SOUT(millis()); SOUTLN(" setup add WIFI 4");
                   ipList.append(WIFI_FIXIP3, WIFI_GATEWAY4, WIFI_SUBNET, WIFI_SSID4, WIFI_SSID4_PW);
                 #endif
-              SOUT(millis()); SOUTLN(" setup locWIFI fertig");
+              SOUT(millis()); SOUTLN(" setup startWIFI locWIFI fertig");
+
+              ip_cell* pip = (ip_cell*) ipList.pFirst();
+              char stmp[NET_MAX_SSID_LEN] = "";
+              SOUT(" setup ip_list addr "); SOUT((u_long) &ipList);
+              SOUT(" count "); SOUTLN(ipList.count());
+              SOUT(" ip1: addr "); SOUTHEX((u_long) pip);
+              SOUT(" locIP "); SOUTHEX(pip->locIP());
+              SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
+              SOUT(" snIP ");  SOUTHEX(pip->snIP());
+              pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
+              pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
+              pip = (ip_cell*) pip->pNext();
+              SOUT(" ip2: addr "); SOUTHEX((u_long) pip);
+              SOUT(" locIP "); SOUTHEX(pip->locIP());
+              SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
+              SOUT(" snIP ");  SOUTHEX(pip->snIP());
+              pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
+              pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
+              pip = (ip_cell*) pip->pNext();
+              SOUT(" ip3: addr "); SOUTHEX((u_long) pip);
+              SOUT(" locIP "); SOUTHEX(pip->locIP());
+              SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
+              SOUT(" snIP ");  SOUTHEX(pip->snIP());
+              pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
+              pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
 
               ret = wifi.scanWIFI(&ipList);
                     //#if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
@@ -450,7 +474,7 @@
 // --- system startup
   void setup()
     {
-      uint8_t n   = 0;
+      //uint8_t n   = 0;
       // --- system
         // start system
           Serial.begin(SER_BAUDRATE);
@@ -459,39 +483,10 @@
               #endif
 
           #ifdef SCAN_I2C
-            uint8_t addr = 0;
-            // reset array
-            for ( n= 0 ; n < ANZ_I2C ; n++)
-              for (uint8_t i=0 ; i < SCAN_I2C ; i++)
-                devI2C[n][i] = 0;
-
-            // check I2C1 for devices
-            while (addr < SCAN_I2C)
-              {
-                addr = scanI2C(0, addr, PIN_I2C1_SDA, PIN_I2C1_SCL);
-                if ((0 < addr) && (addr < SCAN_I2C))
-                  {
-                    devI2C[0][addr] = I2C_DEV_NN;  // unknown device present
-                    devI2C[0][0]++;
-                    addr++;
-                  }
-              }
-            sleep(1);
-
-            #ifdef PIN_I2C2_SDA
-              addr = 0;
-              while (addr < SCAN_I2C)
-                {
-                  addr = scanI2C(1, addr, PIN_I2C2_SDA, PIN_I2C2_SCL);
-                  if ((0 < addr) && (addr < SCAN_I2C))
-                    {
-                      devI2C[0][addr] = I2C_DEV_NN;  // unknown device present
-                      devI2C[0][0]++;
-                      addr++;
-                    }
-                }
-              sleep(1);
-              #endif
+              scanI2C(I2C1, 0, PIN_I2C1_SDA, PIN_I2C1_SCL);
+              #if (ANZ_I2C > 1)
+                  scanI2C(I2C2, 0, PIN_I2C2_SDA, PIN_I2C2_SCL);
+                #endif
             #endif
       //
       // --- user interface

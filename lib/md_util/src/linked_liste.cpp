@@ -18,104 +18,121 @@
 
 #include "linked_list.hpp"
 
+//
 // --- class md_cell
-md_cell::md_cell()
+  md_cell::md_cell()
   {
-    //SOUT(millis()); SOUTLN(" md_cell new");
+    SOUT(millis()); SOUTLN(" md_cell new");
     _pNext = NULL;
+    _pPriv = NULL;
   }
 
+  void* md_cell::pNext()
+    {
+      SOUT(millis()); SOUT(" md_list pNext "); SOUTHEXLN((u_long) _pNext);
+      return (void*) _pNext;
+    }
+
+  void* md_cell::pPriv()
+    {
+      SOUT(millis()); SOUT(" md_list pPriv "); SOUTHEXLN((u_long) _pPriv);
+      return (void*) _pPriv;
+    }
+
+  void  md_cell::setNext(void* pNext)
+    {
+      SOUT(millis()); SOUT(" md_list setNext "); SOUTHEXLN((u_long) pNext);
+      _pNext = pNext;
+    }
+
+  void  md_cell::setPriv(void* pPriv)
+    {
+      SOUT(millis()); SOUT(" md_list setPriv "); SOUTHEXLN((u_long) pPriv);
+      _pPriv = pPriv;
+    }
+
+
+//
 // --- class md_list
-md_list::md_list()
-  {
-    //SOUT(millis()); SOUTLN(" md_list new");
-    _pFirst = _pLast = NULL;
-  }
+  md_list::md_list()
+    {
+      SOUT(millis()); SOUTLN(" md_list new");
+      _pFirst = _pLast = NULL;
+      _count  = 0;
+    }
 
-md_list::~md_list()
-  {
-    md_cell* pcell = NULL;
-    SOUT(millis()); SOUTLN(" md_list del ");
-    while (pcell = md_list::removeFirstCell())
-      {
-        SOUTHEXLN((u_long) pcell);
-      }
-  }
-
-void md_list::append (md_cell *pCell)   /* ein Listenelement am Ende anhaengen */
-  {
-    if (_pLast == NULL)            /* wenn noch kein Listenelement eingetragen */
+  md_list::~md_list()
+    {
+      //md_cell* pcell = NULL;
+      SOUT(millis()); SOUTLN(" md_list del ");
+/*
+      while ((pcell = md_list::removeFirstCell()) != NULL)
         {
-            _pFirst = _pLast = pCell;
+          SOUTHEXLN((u_long) pcell);
         }
-      else
-        {
-            _pLast->_pNext = pCell;
-            _pLast = pCell;
-        }
-    //SOUT(millis()); SOUT(" md_list append "); SOUTHEXLN((u_long) pCell);
-  }
+*/
+    }
 
-//
-md_cell *md_list::getCellPointer( unsigned short index ) /* Pointer auf ein Listenelement holen */
-  {
-    /* index beginnt ab 0 */
-    md_cell *pCell;
-    unsigned short i;
+  uint16_t md_list::count ()
+    {
+      return _count;
+    }
 
-    pCell = _pFirst;
-    for ( i=0; i<index; i++ )
-      {
-        if ( pCell != NULL )  /* wenn Element eingetragen */
+  void*    md_list::pFirst()
+    {
+      return (void*) _pFirst;
+    }
+
+  void*    md_list::pLast ()
+    {
+      return (void*) _pLast;
+    }
+
+  //
+  uint16_t md_list::add (void* pCell)   /* ein Listenelement am Ende anhaengen */
+    {
+      SOUT(millis()); SOUT(" md_list before add: count ");
+      SOUT(_count);SOUT(" pFirst "); SOUTHEX((u_long) _pFirst); SOUT(" plast "); SOUTHEXLN((u_long) _pLast);
+      if (_pLast == NULL)            /* wenn noch kein Listenelement eingetragen */
           {
-            pCell = pCell->_pNext; /* Pointer auf naechstes Listenelement */
+            _pFirst = _pLast = (md_cell*) pCell;
+            _count++;
           }
         else
           {
-            i = index;        /* Liste ist nicht so lang (ende for-Schleife) */
+            _pLast->setNext(pCell);
+            md_cell* ptmp = (md_cell*) pCell;
+            ptmp->setPriv((void*) _pLast);
+            ptmp->setNext(NULL);
+            _pLast = ptmp;
+            _count++;
           }
-      }
+      SOUT(millis()); SOUT(" md_list after add: count ");
+      SOUT(_count);SOUT(" pFirst "); SOUTHEX((u_long) _pFirst); SOUT(" plast "); SOUTHEXLN((u_long) _pLast);
+      return count();
+    }
 
-    //SOUT(millis()); SOUT(" md_list getCellPointer" ); SOUTHEXLN((u_long) pCell);
-    return( pCell );
-  }
-
-//
-md_cell *md_list::getNextCellPointer( md_cell *pCell ) /* Pointer auf das naechste Listenelement holen */
-  {
-    if ( pCell != NULL )  /* wenn Element eingetragen */
-      {
-        pCell = pCell->_pNext; /* Pointer auf naechstes Listenelement */
-      }
-    else
-      {
-        ;/* bereits letztes Listenelement erreicht */
-      }
-
-    //SOUT(millis()); SOUT(" md_list getNextPointer "); SOUTHEXLN((u_long) pCell);
-    return( pCell );
-  }
-
-//
-md_cell *md_list::removeFirstCell( ) /* Erstes Element aus der Liste entnehmen und Pointer auf dieses Element zurueckgeben */
-  {
-    md_cell *pCell = NULL;
-
-    if ( _pFirst != NULL )   /* wenn noch mind. ein Element in der Liste */
-      {
-        pCell = _pFirst;
-        if ( _pFirst != _pLast )  /* wenn noch nicht letztes Element */
-          {
-            _pFirst = _pFirst->_pNext;
-          }
-        else
-          {
-            _pFirst = _pLast = NULL;
-          }
-      }
-    //SOUT(millis()); SOUT(" md_list removeFirstCell "); SOUTHEXLN((u_long) pCell);
-    return( pCell );
-  }
+  //
+/*
+  md_cell* md_list::removeFirstCell( ) // Erstes Element aus der Liste entnehmen und Pointer auf dieses Element zurueckgeben
+    {
+      md_cell *pCell = NULL;
+      if ( _pFirst != NULL )   // wenn noch mind. ein Element in der Liste
+        {
+          pCell = _pFirst;
+          if ( _pFirst != _pLast )  // wenn noch nicht letztes Element
+            {
+              _pFirst = _pFirst->pNext();
+            }
+          else
+            {
+              _pFirst = _pLast = NULL;
+            }
+        }
+      //SOUT(millis()); SOUT(" md_list removeFirstCell "); SOUTHEXLN((u_long) pCell);
+      return( pCell );
+    }
+*/
 
 /* EOF */
 

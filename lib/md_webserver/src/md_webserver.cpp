@@ -4,7 +4,7 @@
   //
   // --- webserver
     WebServer webServ(80);
-    md_server webMD   = md_server();
+    //md_server webMD   = md_server();
   //
   // --- NTP server ---------------------
     unsigned int localPort = 2390;
@@ -285,19 +285,19 @@
         _locip     = (uint32_t) 0;
         _ssid[0]   = 0;
         _passw[0]  = 0;
-        _isinit    = false;
-        _lenlist   = 0;
-        _pssidlist = NULL;
-        _ppwlist   = NULL;
-        _piplist   = NULL;
+        //_isinit    = false;
+        //_lenlist   = 0;
+        //_pssidlist = NULL;
+        //_ppwlist   = NULL;
+        //_piplist   = NULL;
       }
 
-    void md_wifi::setIPList(md_localIP* piplist)
+    /*void md_wifi::setIPList(md_localIP* piplist)
       {
         _piplist = piplist;
       }
 
-    bool md_wifi::initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz)
+      bool md_wifi::initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz)
       {
                 Serial.println();
                 Serial.print(millis()); Serial.print(" initWIFI .. ");
@@ -310,64 +310,55 @@
               Serial.println(" OK");
         return WIFI_OK;
       }
+    */
 
-    bool md_wifi::scanWIFI()
+    bool md_wifi::scanWIFI(ip_list* plist)
       {
-        if (!_isinit)
-        {
-          return WIFI_ERR;
-        }
-        // Set WiFi to station mode and disconnect from an AP if it was previously connected
-
         _ssid[0] = 0;
         _locip   = (uint32_t) 0;
         _gateip  = (uint32_t) 0;
         _subnet  = (uint32_t) 0;
                 SOUTLN();
-                SOUT(millis()); SOUTLN(" WIFI scan");
+                SOUT(millis()); SOUT(" WIFI scan pList "); SOUTHEX((u_long) plist);
+                SOUT(" pFirst "); SOUTHEXLN((u_long) plist->pFirst());
         usleep(10000);
 
         // WiFi.scanNetworks will return the number of networks found
         int n = WiFi.scanNetworks();
         if (n == 0)
-        {
-                SOUTLN("no networks found");
-        }
-        else
-        {
-                  SOUT(n); SOUTLN(" networks found");
-          uint8_t s = 0;
-          for (uint8_t i = 0; i < n; ++i)
           {
-            // Print SSID and RSSI for each network found
-                    SOUT(i + 1);
-            for ( s = 0; s < _lenlist ; s++ )
-              {
-                       //SOUT(" "); SOUT(_pssidlist[s]);
-                if (strcmp(WiFi.SSID(i).c_str(), _pssidlist[s]) == 0)
-                  {
-                    memcpy(_ssid, _pssidlist[s], sizeof(LoginTxt_t)) ;
-                    memcpy(_passw, _ppwlist[s], sizeof(LoginTxt_t)) ;
-                            Serial.print(" used: "); Serial.print((char*) _ssid); Serial.print(" - ");
-                    if (_piplist != NULL)
-                      {
-                        _locip  = _piplist[s].getIP();
-                        _gateip = _piplist[s].getGW();
-                        _subnet = _piplist[s].getSN();
-                      }
-                    break;
-                  }
-              }
-            if ( s >= _lenlist)
-              {
-                    SOUT("       ");
-              }
-                    SOUT(WiFi.SSID(i));
-                    SOUT(" ("); SOUT(WiFi.RSSI(i)); Serial.print(")");
-                    SOUTLN((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-            usleep(10000);
+                  SOUTLN("no networks found");
           }
-        }
+        else
+          {
+                    SOUT(n); SOUTLN(" networks found");
+            //uint8_t  s = 0;
+            ip_cell* pip = (ip_cell*) plist->pFirst();
+            SOUT(" scanWIFI pList "); SOUTHEX((u_long) plist);
+            SOUT("  pip "); SOUTHEXLN((u_long) pip);
+            for (uint8_t i = 0; i < n; ++i)
+              {
+                // Print SSID and RSSI for each network found
+                pip = plist->find(WiFi.SSID(i).c_str());
+                if ( pip != NULL )
+                  {
+                    pip->getSSID(_ssid);
+                    pip->getPW(_passw);
+                    _locip  = pip->locIP();
+                    _gateip = pip->gwIP();
+                    _subnet = pip->snIP();
+                      SOUT(" used: "); SOUT((char*) _ssid); SOUT(" - ");
+                  }
+                else
+                  {
+                    SOUT("       ");
+                  }
+                SOUT(WiFi.SSID(i));
+                SOUT(" ("); SOUT(WiFi.RSSI(i)); Serial.print(")");
+                SOUTLN((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+                usleep(10000);
+              }
+          }
       //  WiFi.disconnect();
         if (strlen(_ssid) > 0) { return WIFI_OK; }
         else                    { return WIFI_ERR; };

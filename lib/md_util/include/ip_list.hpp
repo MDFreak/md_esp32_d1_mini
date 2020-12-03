@@ -29,16 +29,16 @@
 
   class ip_cell : public md_cell
     {
-      private:
+      protected:
         uint32_t _locIP    = 0;
         uint32_t _gwIP     = 0;
         uint32_t _snIP     = 0;
         char     _ssid[NET_MAX_SSID_LEN] = "";
         char     _pw[NET_MAX_PW_LEN]   = "";
-        ip_cell* _me;
+//        ip_cell* _me;
 
       public:
-        ip_cell() {}    // Konstruktor
+        ip_cell() : md_cell() { SOUT(millis()); SOUTLN(" ip_cell new"); }    // Konstruktor
         ~ip_cell() {}           // Destruktor
 
         void init(uint32_t locIP, uint32_t gwIP, uint32_t snIP,
@@ -46,25 +46,25 @@
         uint32_t locIP()  { return(_locIP); }
         uint32_t gwIP()   { return(_gwIP);  }
         uint32_t snIP()   { return(_snIP);  }
-        char*    ssid()   { return(_ssid); }
-        char*    pw()     { return(_pw);   }
+        void getSSID(char ssid[NET_MAX_SSID_LEN] ) { strcpy(ssid, _ssid); }
+        void getPW(char pw[NET_MAX_PW_LEN])        { strcpy(pw, _pw); }
     };
 
-  class ip_list : md_list
+  //
+  class ip_list : public md_list
     {
       private:
-        ip_cell *_pFirst;
-        ip_cell *pLast;
+        ip_cell* _pFirst;
+        ip_cell* _pLast;
 
       public:
-        ip_list();
+        ip_list() : md_list() { SOUT(millis()); SOUTLN(" ip_list new"); }
         ~ip_list();
 
         void append(uint32_t locIP, uint32_t gwIP, uint32_t snIP,
                      const char ssid[NET_MAX_SSID_LEN],
                      const char pw[NET_MAX_PW_LEN]);
-        ip_cell* getCellPointer( unsigned short index );
-        ip_cell* getNextCellPointer( ip_cell* pCell );
+        ip_cell* find(const char ssid[NET_MAX_SSID_LEN]);
     };
 #endif
 

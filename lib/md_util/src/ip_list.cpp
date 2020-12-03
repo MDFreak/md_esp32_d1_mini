@@ -29,54 +29,55 @@ void ip_cell::init(uint32_t locIP, uint32_t gwIP, uint32_t snIP,
     _snIP  = snIP;
     strncpy(_ssid, ssid, NET_MAX_SSID_LEN);
     strncpy(_pw, pw, NET_MAX_PW_LEN);
-    //SOUT(millis()); SOUT(" ip_cell init _locIP "); SOUTHEX(_locIP); SOUT("  _ssid "); SOUTLN(_ssid);
-  }
-
-// class ip_list
-ip_list::ip_list()
-  {
-    _pFirst = pLast = NULL;
-    //SOUT(millis()); SOUTLN(" ip_list new");
+    SOUT(millis()); SOUT(" ip_cell init _locIP "); SOUTHEX(_locIP); SOUT("  _ssid "); SOUTLN(_ssid);
   }
 
 ip_list::~ip_list()
   {
-    void* pcell = NULL;
+//    void* pcell = NULL;
     SOUT(millis()); SOUTLN(" ip_list del ");
-    while (pcell = md_list::removeFirstCell())
+/*
+    while ((pcell = md_list::removeFirstCell()) != NULL)
       {
         SOUT(millis()); SOUT(" del ip_cell ");SOUTHEXLN((u_long) pcell);
         ((ip_cell*) pcell)->~ip_cell();
       }
+*/
   }
 
+//
 void ip_list::append(uint32_t locIP, uint32_t gwIP, uint32_t snIP,
                      const char ssid[NET_MAX_SSID_LEN],
                      const char pw[NET_MAX_PW_LEN])
   {
     ip_cell* neu = new ip_cell();
+    this->add((void*) neu);
+    neu->init(locIP, gwIP, snIP, ssid, pw);
+    char stmp[NET_MAX_SSID_LEN];
+    neu->getSSID(stmp);
     SOUT(millis());
     SOUT(" ip_list append ip_cell "); SOUTHEX((u_long) neu);
-    SOUT("  locIP "); SOUTHEX(locIP); SOUT("  ssid "); SOUTLN(ssid);
-    neu->init(locIP, gwIP, snIP, ssid, pw);
-    md_list::append(neu);
+    SOUT("  locIP "); SOUTHEX(neu->locIP()); SOUT("  ssid "); SOUTLN(stmp);
   }
 
-ip_cell* ip_list::getCellPointer( unsigned short index )
+ip_cell* ip_list::find(const char ssid[NET_MAX_SSID_LEN])
   {
-    void* ptmp = (void*) md_list::getCellPointer( index );
-    SOUT(millis()); SOUT(" ip_list getCellPointer "); SOUTHEXLN((u_long) ptmp);
-    return (ip_cell*) ptmp;
+    void* ptmp = _pFirst;
+    char myname[NET_MAX_SSID_LEN + 1] = "";
+    SOUT(" ip_list::find search for ssid "); SOUTLN(ssid);
+    SOUT(" ptmp "); SOUTHEX((u_long) ptmp);
+    while ( ptmp != NULL )
+      {
+        ((ip_cell*) ptmp)->getSSID(myname);
+        SOUT(" ptmp "); SOUTHEX((u_long) ptmp); SOUT(" found ssid "); SOUTLN(myname);
+        if (strcmp(myname, ssid) == 0)
+          {
+            break;
+          }
+        ptmp = (ip_cell*) ptmp->pNext();
+      }
+    return ptmp;
   }
-
-ip_cell* ip_list::getNextCellPointer( ip_cell* pCell )
-  {
-    void* ptmp = (void*) pCell;
-    ptmp = (void*) md_list::getNextCellPointer( (md_cell*)(ptmp) );
-    SOUT(millis()); SOUT(" ip_list getNextCellPointer "); SOUTHEXLN((u_long) ptmp);
-    return (ip_cell*) ptmp;
-  }
-
 
 /* EOF */
 

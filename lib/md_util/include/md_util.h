@@ -7,7 +7,7 @@
   uint16_t setBit(uint16_t inWert, uint16_t inBit, bool inVal = true);
   uint16_t clrBit(uint16_t inWert, uint16_t inBit);
   bool     getBit(uint16_t inWert, uint16_t inBit);
-  uint8_t  scanIIC(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl);
+  uint8_t  scanI2C(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl);
 
   class msTimer
   {

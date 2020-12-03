@@ -35,8 +35,8 @@ uint16_t setBit(const uint16_t inWert, const uint16_t inBit, const bool inVal)
   }
 
 //--------------------------
-// scan IIC - serial output
-uint8_t scanIIC(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
+// scan I2C - serial output
+uint8_t scanI2C(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
   {
     uint8_t i = 0;
     TwoWire I2C = TwoWire(no-1);
