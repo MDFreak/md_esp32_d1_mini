@@ -44,6 +44,7 @@
 
         public:
           md_cell();
+          ~md_cell();
 
           void* pNext();
           void* pPriv();
@@ -66,9 +67,8 @@
           void*    pFirst();
           void*    pLast ();
           uint16_t add   ( void* pCell ); //return count
-          uint16_t remove( void* pCell ); //return count
-
-      };
+          uint16_t remove( bool first = FIRST );
+        };
   //
 
 #endif

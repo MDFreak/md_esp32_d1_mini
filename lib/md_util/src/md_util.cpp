@@ -41,8 +41,8 @@ uint8_t scanI2C(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
     uint8_t i = 0;
     TwoWire I2C = TwoWire(no-1);
     I2C.begin(sda,scl,400000);
-    Serial.println();
-    Serial.print("Scanning I2C Addresses Channel "); Serial.print(no);
+    SOUTLN();
+    SOUT("Scanning I2C Addresses Channel "); SOUTLN(no);
     //uint8_t cnt=0;
     for(i = start; i < 128 ; i++)
       {
@@ -50,10 +50,9 @@ uint8_t scanI2C(uint8_t no, uint8_t start, uint8_t sda, uint8_t scl)
         uint8_t ec=I2C.endTransmission(true);
         if(ec==0)
           {
-            Serial.print(" device at address 0x");
+            SOUT(" device at address 0x");
             if (i<16) Serial.print('0');
-            Serial.print(i, HEX);
-            break;
+            SOUTHEXLN(i);
           }
       }
     I2C.~TwoWire();

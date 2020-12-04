@@ -249,15 +249,11 @@
                   #endif
                 #if defined(OLED1)
                   oled1.wrText(msg, col, row, len);
-                        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                            SOUT((uint32_t) millis); SOUT(" dispText oled1 '"); SOUT(msg); SOUTLN("'");
-                          #endif
+                            //SOUT((uint32_t) millis); SOUT(" dispText oled1 '"); SOUT(msg); SOUTLN("'");
                   #endif
                 #if defined(OLED2)
                   oled2.wrText(msg, col, row, len);
-                        #if (DEBUG_MODE >= CFG_DEBUG_DETAILS)
-                            SOUT((uint32_t) millis); SOUT(" dispText oled2 '"); SOUT(msg); SOUTLN("'");
-                          #endif
+                            //SOUT((uint32_t) millis); SOUT(" dispText oled2 '"); SOUT(msg); SOUTLN("'");
                   #endif
                 #if defined(USE_TFT)
                   mlcd.wrText(msg, row, col);
@@ -326,62 +322,60 @@
           if (startup)
             {
               ip_list ipList = ip_list(); // temporary object
-              SOUT(millis()); SOUT(" setup startWIFI created ipList "); SOUTHEXLN((int) &ipList);
-              SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 0");
+                        SOUT(millis()); SOUT(" setup startWIFI created ipList "); SOUTHEXLN((int) &ipList);
+                        //SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 0");
               ipList.append(WIFI_FIXIP0, WIFI_GATEWAY0, WIFI_SUBNET, WIFI_SSID0, WIFI_SSID0_PW);
               #if (WIFI_ANZ_LOGIN > 1)
-                  SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 1");
+                        //SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 1");
                   ipList.append(WIFI_FIXIP1, WIFI_GATEWAY1, WIFI_SUBNET, WIFI_SSID1, WIFI_SSID1_PW);
                 #endif
               #if (WIFI_ANZ_LOGIN > 2)
-                  SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 2");
+                        //SOUT(millis()); SOUTLN(" setup startWIFI add WIFI 2");
                   ipList.append(WIFI_FIXIP2, WIFI_GATEWAY2, WIFI_SUBNET, WIFI_SSID2, WIFI_SSID2_PW);
                 #endif
               #if (WIFI_ANZ_LOGIN > 3)
-                  SOUT(millis()); SOUTLN(" setup add WIFI 3");
+                        //SOUT(millis()); SOUTLN(" setup add WIFI 3");
                   ipList.append(WIFI_FIXIP3, WIFI_GATEWAY3, WIFI_SUBNET, WIFI_SSID3, WIFI_SSID3_PW);
                 #endif
               #if (WIFI_ANZ_LOGIN > 4)
-                  SOUT(millis()); SOUTLN(" setup add WIFI 4");
+                        //SOUT(millis()); SOUTLN(" setup add WIFI 4");
                   ipList.append(WIFI_FIXIP3, WIFI_GATEWAY4, WIFI_SUBNET, WIFI_SSID4, WIFI_SSID4_PW);
                 #endif
-              SOUT(millis()); SOUTLN(" setup startWIFI locWIFI fertig");
+                        SOUT(millis()); SOUTLN(" setup startWIFI locWIFI fertig");
 
-              ip_cell* pip = (ip_cell*) ipList.pFirst();
-              char stmp[NET_MAX_SSID_LEN] = "";
-              SOUT(" setup ip_list addr "); SOUT((u_long) &ipList);
-              SOUT(" count "); SOUTLN(ipList.count());
-              SOUT(" ip1: addr "); SOUTHEX((u_long) pip);
-              SOUT(" locIP "); SOUTHEX(pip->locIP());
-              SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
-              SOUT(" snIP ");  SOUTHEX(pip->snIP());
-              pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
-              pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
-              pip = (ip_cell*) pip->pNext();
-              SOUT(" ip2: addr "); SOUTHEX((u_long) pip);
-              SOUT(" locIP "); SOUTHEX(pip->locIP());
-              SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
-              SOUT(" snIP ");  SOUTHEX(pip->snIP());
-              pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
-              pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
-              pip = (ip_cell*) pip->pNext();
-              SOUT(" ip3: addr "); SOUTHEX((u_long) pip);
-              SOUT(" locIP "); SOUTHEX(pip->locIP());
-              SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
-              SOUT(" snIP ");  SOUTHEX(pip->snIP());
-              pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
-              pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
+                        //ip_cell* pip = (ip_cell*) ipList.pFirst();
+                        //char stmp[NET_MAX_SSID_LEN] = "";
+                                /*
+                                  SOUT(" setup ip_list addr "); SOUT((u_long) &ipList);
+                                  SOUT(" count "); SOUTLN(ipList.count());
+                                  SOUT(" ip1: addr "); SOUTHEX((u_long) pip);
+                                  SOUT(" locIP "); SOUTHEX(pip->locIP());
+                                  SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
+                                  SOUT(" snIP ");  SOUTHEX(pip->snIP());
+                                  pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
+                                  pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
+                                  pip = (ip_cell*) pip->pNext();
+                                  SOUT(" ip2: addr "); SOUTHEX((u_long) pip);
+                                  SOUT(" locIP "); SOUTHEX(pip->locIP());
+                                  SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
+                                  SOUT(" snIP ");  SOUTHEX(pip->snIP());
+                                  pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
+                                  pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
+                                  pip = (ip_cell*) pip->pNext();
+                                  SOUT(" ip3: addr "); SOUTHEX((u_long) pip);
+                                  SOUT(" locIP "); SOUTHEX(pip->locIP());
+                                  SOUT(" gwIP ");  SOUTHEX(pip->gwIP());
+                                  SOUT(" snIP ");  SOUTHEX(pip->snIP());
+                                  pip->getSSID(stmp); SOUT(" ssid "); SOUT(stmp);
+                                  pip->getPW(stmp); SOUT(" pw "); SOUTLN(stmp);
+                                */
 
               ret = wifi.scanWIFI(&ipList);
-                    //#if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
-              SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
-                    //#endif
+                        SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
               //ipList.~ip_list();
             }
           ret = wifi.startWIFI();
-                    //#if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                       SOUT("startWIFI ret="); SOUT(ret);
-                      //#endif
           md_error = setBit(md_error, ERRBIT_WIFI, ret);
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
                   SOUT("  md_error="); SOUTLN(md_error);
@@ -596,8 +590,8 @@
             }
           ntpT.startT();
                 #if (DEBUG_MODE == CFG_DEBUG_DETAILS)
-                  SOUT("Datum "); SOUT(day()); SOUT("."); SOUT(month()); SOUT("."); SOUT(year()); SOUT(" ");
-                  SOUT("Zeit "); SOUT(hour()); SOUT("."); SOUT(minute()); SOUT(":"); SOUTLN(second());
+                  //SOUT("Datum "); SOUT(day()); SOUT("."); SOUT(month()); SOUT("."); SOUT(year()); SOUT(" ");
+                  //SOUT("Zeit "); SOUT(hour()); SOUT("."); SOUT(minute()); SOUT(":"); SOUTLN(second());
                 #endif
         }
         #endif // USE_NTP_SERVER

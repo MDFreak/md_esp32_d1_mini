@@ -285,32 +285,7 @@
         _locip     = (uint32_t) 0;
         _ssid[0]   = 0;
         _passw[0]  = 0;
-        //_isinit    = false;
-        //_lenlist   = 0;
-        //_pssidlist = NULL;
-        //_ppwlist   = NULL;
-        //_piplist   = NULL;
       }
-
-    /*void md_wifi::setIPList(md_localIP* piplist)
-      {
-        _piplist = piplist;
-      }
-
-      bool md_wifi::initWIFI(LoginTxt_t* ssids, LoginTxt_t* pws, uint8_t anz)
-      {
-                Serial.println();
-                Serial.print(millis()); Serial.print(" initWIFI .. ");
-        WiFi.mode(WIFI_STA);
-        _lenlist  = anz;
-        _pssidlist = ssids;
-        _ppwlist   = pws;
-        WiFi.onEvent(WiFiEvent); // start interrupt handler
-        _isinit = true;
-              Serial.println(" OK");
-        return WIFI_OK;
-      }
-    */
 
     bool md_wifi::scanWIFI(ip_list* plist)
       {
@@ -334,13 +309,13 @@
                     SOUT(n); SOUTLN(" networks found");
             //uint8_t  s = 0;
             ip_cell* pip = (ip_cell*) plist->pFirst();
-            SOUT(" scanWIFI pList "); SOUTHEX((u_long) plist);
-            SOUT("  pip "); SOUTHEXLN((u_long) pip);
+                    //SOUT(" scanWIFI pList "); SOUTHEX((u_long) plist);
+                    //SOUT("  pip "); SOUTHEXLN((u_long) pip);
             for (uint8_t i = 0; i < n; ++i)
               {
                 // Print SSID and RSSI for each network found
                 pip = plist->find(WiFi.SSID(i).c_str());
-                if ( pip != NULL )
+                if ( (pip != NULL)  )
                   {
                     pip->getSSID(_ssid);
                     pip->getPW(_passw);
@@ -366,18 +341,18 @@
 
     bool md_wifi::startWIFI()
       {
-                Serial.print(millis());
-                Serial.println(" md_startWIFI");
+                SOUT(millis()); SOUTLN(" md_startWIFI");
+                //_debugConn();
         if (strlen(_ssid) == 0)
           { // keine SSID
-                    Serial.print(millis());
-                    Serial.println(" SSID nicht initialisiert ");
+                    SOUT(millis());
+                    SOUT(" SSID nicht initialisiert ");
             return WIFI_ERR;
           }
-
+                 //_debugConn();
+        WiFi.config(_locip, _gateip, _subnet);
         WiFi.begin(_ssid, _passw); // start connection
-        Serial.println(""); Serial.println(millis());
-
+                 //_debugConn();
         // Wait for connection
         usleep(_conn_delay);
         uint8_t repOut = (uint8_t) _conn_rep;
@@ -390,14 +365,7 @@
 
         if (WiFi.status() == WL_CONNECTED)
           {
-                      Serial.println("");
-                      Serial.print(millis());
-                      Serial.print(" Connected to ");
-                      Serial.println(*_ssid);
-                      Serial.print("IP address: ");
-                      Serial.println(WiFi.localIP());
-                      Serial.print("MAC address: ");
-                      Serial.println(WiFi.macAddress());
+            _debugConn(TRUE);
             if (MDNS.begin("esp32"))
             {
                       Serial.println("MDNS responder started");Serial.println();
@@ -411,6 +379,45 @@
                     #endif
           }
           return WIFI_ERR;
+      }
+    void md_wifi::_debugConn(bool _wifi)
+      {
+        if (_wifi == TRUE)
+          {
+            SOUTLN("");
+            SOUT  (millis());
+            SOUT  (" Connected to ");
+            SOUTLN(_ssid);
+            SOUT  ("IP address: ");
+            SOUTLN(WiFi.localIP());
+            SOUT  ("MAC address: ");
+            SOUTLN(WiFi.macAddress());
+          }
+        else
+          {
+            SOUTLN("");
+            SOUT  (millis());
+            SOUT  (" local connection ");
+            SOUT  (_ssid);
+            SOUTLN(_passw);
+            SOUT  ("IP address: ");
+            SOUT  (_locip);     SOUT(" - ");
+            SOUT  (_locip[0]);  SOUT(".");
+            SOUT  (_locip[1]);  SOUT(".");
+            SOUT  (_locip[2]);  SOUT(".");
+            SOUT  (_locip[3]);  SOUT("  ");
+            SOUT  (_subnet);    SOUT(" - ");
+            SOUT  (_subnet[0]); SOUT(".");
+            SOUT  (_subnet[1]); SOUT(".");
+            SOUT  (_subnet[2]); SOUT(".");
+            SOUT  (_subnet[3]); SOUT("  ");
+            SOUT  (_gateip);    SOUT(" - ");
+            SOUT  (_gateip[0]); SOUT(".");
+            SOUT  (_gateip[1]); SOUT(".");
+            SOUT  (_gateip[2]); SOUT(".");
+            SOUTLN(_gateip[3]);
+            SOUTLN();
+          }
       }
   //
   // --- class md_server --------------------------

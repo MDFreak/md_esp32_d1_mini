@@ -15,6 +15,9 @@
       #define ISERR   TRUE   // function call
       #define ISOK    FALSE
 
+      #define FIRST   TRUE   // function call
+      #define LAST    FALSE
+
       #define CR   13 // carrige return
       #define LF   10 // line feed
       #define LN   LF

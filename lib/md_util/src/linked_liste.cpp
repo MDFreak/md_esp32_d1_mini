@@ -21,33 +21,37 @@
 //
 // --- class md_cell
   md_cell::md_cell()
-  {
-    SOUT(millis()); SOUTLN(" md_cell new");
-    _pNext = NULL;
-    _pPriv = NULL;
-  }
+    {
+            //SOUT(millis()); SOUT(" md_cell new "); SOUTHEXLN((u_long) this);
+      _pNext = NULL;
+      _pPriv = NULL;
+    }
 
+  md_cell::~md_cell()
+    {
+            //SOUT(millis()); SOUT(" md_cell del me "); SOUTHEXLN((u_long) this);
+    }
   void* md_cell::pNext()
     {
-      SOUT(millis()); SOUT(" md_list pNext "); SOUTHEXLN((u_long) _pNext);
+                    //SOUT(millis()); SOUT(" md_list pNext "); SOUTHEXLN((u_long) _pNext);
       return (void*) _pNext;
     }
 
   void* md_cell::pPriv()
     {
-      SOUT(millis()); SOUT(" md_list pPriv "); SOUTHEXLN((u_long) _pPriv);
+                    //SOUT(millis()); SOUT(" md_list pPriv "); SOUTHEXLN((u_long) _pPriv);
       return (void*) _pPriv;
     }
 
   void  md_cell::setNext(void* pNext)
     {
-      SOUT(millis()); SOUT(" md_list setNext "); SOUTHEXLN((u_long) pNext);
+                    //SOUT(millis()); SOUT(" md_list setNext "); SOUTHEXLN((u_long) pNext);
       _pNext = pNext;
     }
 
   void  md_cell::setPriv(void* pPriv)
     {
-      SOUT(millis()); SOUT(" md_list setPriv "); SOUTHEXLN((u_long) pPriv);
+                    //SOUT(millis()); SOUT(" md_list setPriv "); SOUTHEXLN((u_long) pPriv);
       _pPriv = pPriv;
     }
 
@@ -56,21 +60,14 @@
 // --- class md_list
   md_list::md_list()
     {
-      SOUT(millis()); SOUTLN(" md_list new");
+                //SOUT(millis()); SOUTLN(" md_list new");
       _pFirst = _pLast = NULL;
       _count  = 0;
     }
 
   md_list::~md_list()
     {
-      //md_cell* pcell = NULL;
-      SOUT(millis()); SOUTLN(" md_list del ");
-/*
-      while ((pcell = md_list::removeFirstCell()) != NULL)
-        {
-          SOUTHEXLN((u_long) pcell);
-        }
-*/
+            //SOUT(millis()); SOUT(" md_list del me "); SOUTHEXLN((u_long) this);
     }
 
   uint16_t md_list::count ()
@@ -89,10 +86,10 @@
     }
 
   //
-  uint16_t md_list::add (void* pCell)   /* ein Listenelement am Ende anhaengen */
+  uint16_t md_list::add    ( void* pCell )   /* ein Listenelement am Ende anhaengen */
     {
-      SOUT(millis()); SOUT(" md_list before add: count ");
-      SOUT(_count);SOUT(" pFirst "); SOUTHEX((u_long) _pFirst); SOUT(" plast "); SOUTHEXLN((u_long) _pLast);
+                        //SOUT(millis()); SOUT(" md_list before add: count ");
+                        //SOUT(_count);SOUT(" pFirst "); SOUTHEX((u_long) _pFirst); SOUT(" plast "); SOUTHEXLN((u_long) _pLast);
       if (_pLast == NULL)            /* wenn noch kein Listenelement eingetragen */
           {
             _pFirst = _pLast = (md_cell*) pCell;
@@ -107,32 +104,56 @@
             _pLast = ptmp;
             _count++;
           }
-      SOUT(millis()); SOUT(" md_list after add: count ");
-      SOUT(_count);SOUT(" pFirst "); SOUTHEX((u_long) _pFirst); SOUT(" plast "); SOUTHEXLN((u_long) _pLast);
+                    //SOUT(millis()); SOUT(" md_list after add: count ");
+                    //SOUT(_count);SOUT(" pFirst "); SOUTHEX((u_long) _pFirst); SOUT(" plast "); SOUTHEXLN((u_long) _pLast);
       return count();
     }
 
-  //
-/*
-  md_cell* md_list::removeFirstCell( ) // Erstes Element aus der Liste entnehmen und Pointer auf dieses Element zurueckgeben
+  uint16_t  md_list::remove ( bool first )
     {
-      md_cell *pCell = NULL;
-      if ( _pFirst != NULL )   // wenn noch mind. ein Element in der Liste
+      void*    ptmp  = NULL;
+      md_cell* pcell = NULL;
+      //uint16_t count = _count;
+            //SOUT(millis()); SOUT(" md_list remove ");
+      if ( _count > 0 )
         {
-          pCell = _pFirst;
-          if ( _pFirst != _pLast )  // wenn noch nicht letztes Element
+          if ( first == FIRST )
             {
-              _pFirst = _pFirst->pNext();
+              ptmp  = _pFirst->pNext();
+              if ( ptmp != 0 ) // more cells exist
+                {
+                  pcell = (md_cell*) ptmp;
+                  pcell->setPriv(NULL);
+                          //SOUT(" first "); SOUTHEXLN((u_long) _pFirst);
+                  _pFirst = pcell;
+                }
+              else // last cell left
+                {
+                  _pFirst = _pLast = NULL;
+                  _count = 0;
+                }
+              if (_count > 0) _count--;
             }
-          else
+          else // first = LAST
             {
-              _pFirst = _pLast = NULL;
+              ptmp  = _pLast->pPriv();
+              if (ptmp != NULL)
+                {
+                  pcell = (md_cell*) ptmp;
+                  pcell->setNext(NULL);
+                          //SOUT(" last "); SOUTHEXLN((u_long) _pLast);
+                  _pLast = pcell;
+                  if (_count > 0) _count--;
+                }
             }
+          return _count;
         }
-      //SOUT(millis()); SOUT(" md_list removeFirstCell "); SOUTHEXLN((u_long) pCell);
-      return( pCell );
-    }
-*/
+      else
+        {
+                  //SOUTLN(" ERR list is empty ");
+        }
 
+      return 0;
+    }
 /* EOF */
 
