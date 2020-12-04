@@ -34,6 +34,7 @@ md_FRAM::md_FRAM(void) { _framInitialised = false; }
 bool md_FRAM::begin(uint8_t addr)
   {
     begin(NN, NN, addr);
+    return ISOK;
   }
 
 bool md_FRAM::begin(int sda, int scl, uint8_t addr)
@@ -135,6 +136,24 @@ void md_FRAM::readBlock(uint16_t memaddr, uint8_t * obj, uint8_t size)
       *p++ = Wire.read();
     }
   }
+//
+bool md_FRAM::selftest(uint16_t pfirst, uint8_t len)
+  {
+    char _write[len+1] = "Leute";
+    char _read[len+1];
+    memset(_read, 0, len+1);
+
+    writeBlock(pfirst + 4, (uint8_t*) _write, strlen(_write));
+    usleep(20000);
+    readBlock(pfirst, (uint8_t*) _read, strlen(_write) + 4 );
+    usleep(20000);
+    SOUT(millis()); SOUT(" FRAM selftest addr "); SOUTHEXLN(pfirst);
+    SOUT(" text write'"); SOUT(_write); SOUT("' read '"); SOUT(_read); SOUTLN("'");
+
+    if (strcpy(_write, _read) == 0) return ISOK;
+    else                            return ISERR;
+  }
+
 
 
 

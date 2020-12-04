@@ -472,9 +472,7 @@
       // --- system
         // start system
           Serial.begin(SER_BAUDRATE);
-              #if (DEBUG_MODE >= CFG_DEBUG_STARTUP)
-                SOUTLN(); SOUTLN("setup start ...");
-              #endif
+          SOUTLN(); SOUTLN("setup start ...");
 
           #ifdef SCAN_I2C
               scanI2C(I2C1, 0, PIN_I2C1_SDA, PIN_I2C1_SCL);
@@ -541,6 +539,8 @@
                 uint16_t prodID, manuID;
                 fram.getDeviceID(&manuID, &prodID);
                 SOUT(" product "); SOUT(prodID); SOUT(" producer "); SOUTLN(manuID);
+
+                SOUT(" FRAM selftest "); SOUT(fram.selftest());
               }
             #endif
       //
