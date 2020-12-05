@@ -21,10 +21,6 @@
         TwoWire i2c2 = TwoWire(1);
       #endif
     //
-/*    #ifdef SCAN_I2C
-      uint8_t       devI2C[ANZ_I2C][SCAN_I2C];
-      #endif
-*/
 //
     #ifdef USE_DISP
         msTimer       dispT  = msTimer(DISP_CYCLE);
@@ -80,44 +76,9 @@
       #endif
   // ------ network ----------------------
     #ifdef USE_WIFI
-      /*
-        LoginTxt_t wifiSSID[WIFI_ANZ_LOGIN] =
-                    {
-                      { WIFI_SSID0 }
-                      #if (WIFI_ANZ_LOGIN > 1)
-                        , { WIFI_SSID1 }
-                        #endif
-                      #if (WIFI_ANZ_LOGIN > 2)
-                        , { WIFI_SSID2 }
-                        #endif
-                      #if (WIFI_ANZ_LOGIN > 3)
-                        , { WIFI_SSID3 }
-                        #endif
-                      #if (WIFI_ANZ_LOGIN > 4)
-                        , { WIFI_SSID4 }
-                        #endif
-                    };
-        //LoginTxt_t wifiPW[WIFI_ANZ_LOGIN] =
-                    {
-                      { WIFI_SSID0_PW }
-                      #if (WIFI_ANZ_LOGIN > 1)
-                        , { WIFI_SSID1_PW }
-                        #endif
-                      #if (WIFI_ANZ_LOGIN > 2)
-                        , { WIFI_SSID2_PW }
-                        #endif
-                      #if (WIFI_ANZ_LOGIN > 3)
-                        , { WIFI_SSID3_PW }
-                        #endif
-                      #if (WIFI_ANZ_LOGIN > 4)
-                        , { WIFI_SSID4_PW }
-                        #endif
-                    };
-      */
         md_wifi wifi  = md_wifi();
         msTimer wifiT = msTimer(WIFI_CONN_CYCLE);
         #if defined(USE_LOCAL_IP)
-            //md_localIP locIP[WIFI_ANZ_LOGIN];
           #endif // USE_LOCAL_IP
         #if defined(USE_NTP_SERVER)
             msTimer ntpT    = msTimer(NTPSERVER_CYCLE);
@@ -142,6 +103,9 @@
     //
     #if defined( USE_BME280_I2C )
         Adafruit_BME280 bme;
+        Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
+        Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
+        Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
       #endif
   // ------ memories
     #ifdef USE_FRAM_I2C
@@ -312,7 +276,9 @@
           }
     // --- sensors
       // --- DS18B20
-        void getDS18D20Str(String outS);
+        String getDS18D20Str();
+      // --- BME280
+        String getBME280Str();
   // ------ WIFI -------------------------
     #if defined(USE_WIFI)
       void startWIFI(bool startup)
@@ -522,9 +488,35 @@
           #ifdef USE_DS18B20_1W
                     SOUT(millis()); SOUT(" DS18D20 ... " );
                 dsSensors.begin();
-                getDS18D20Str(outStr);
-                dispStatus(outStr);
-                    SOUTLN(outStr);
+                String DS18Str = getDS18D20Str();
+                dispStatus(DS18Str);
+                    SOUTLN(DS18Str);
+            #endif
+        // BME280 temperature, pessure, humidity
+          #ifdef USE_BME280_I2C
+                    SOUT(millis()); SOUT(" BME280 ... " );
+                bool bmeda = false;
+                #if defined( I2C_BME2801_USE_I2C1 )
+                    bmeda = bme.begin(I2C_ADDR_BME2801, &i2c1);
+                  #endif
+                #if defined( I2C_BME2801_USE_I2C2 )
+                    bmeda = bme280.begin(I2C_ADDR_BME2801, &i2c2);
+                  #endif
+                if (bmeda)
+                    {
+                            SOUTLN(" gefunden");
+                      bme.setSampling(bme.MODE_SLEEP);
+                      String stmp = getBME280Str();
+                            SOUTLN(stmp);
+                      //bme_temp->printSensorDetails();
+                      //bme_pressure->printSensorDetails();
+                      //bme_humidity->printSensorDetails();
+
+                    }
+                  else
+                    {
+                      SOUT(" nicht gefunden");
+                    }
             #endif
       //
       // --- memories
@@ -691,10 +683,13 @@
                     break;
                   case 5:
                     outStr = "";
-                    getDS18D20Str(outStr);
+                    outStr = getDS18D20Str();
                     dispText(outStr ,  0, 4, outStr.length());
                     break;
                   case 6:
+                    outStr = getBME280Str();
+                            //SOUTLN(outStr);
+                    dispText(outStr ,  0, 3, outStr.length());
                     break;
                   default:
                     oledIdx = 0;
@@ -710,35 +705,41 @@
       sleep(1);
     }
 // --- subroutines
-  void getDS18D20Str(String outS)
-    {
-      #ifdef USE_DS18B20_1W
+  #ifdef USE_DS18B20_1W
+      String getDS18D20Str()
+        {
+          String outS = "";
           dsSensors.requestTemperatures(); // Send the command to get temperatures
           for (uint8_t i = 0 ; i < DS18B20_ANZ ; i++ )
             {
               dsTemp[i] = dsSensors.getTempCByIndex(i);
-              if (i < 1) { outStr  = "T1  "; }
-              else       { outStr += "    T2  ";}
-              outStr += dsTemp[i];
+                    //SOUTLN(dsTemp[i]);
+              if (i < 1) { outS  = "T1 "; }
+              else       { outS += "    T2  ";}
+              outS += (String) ((int) (dsTemp[i] + 0.5)) + "°";
             }
-        #endif
-    }
+          return outS;
+        }
+    #endif
 
-  void getBME280Str(String outS)
-    {
-      #ifdef USE_BME280_I2C
-          /*
-          dsSensors.requestTemperatures(); // Send the command to get temperatures
-          for (uint8_t i = 0 ; i < DS18B20_ANZ ; i++ )
-            {
-              dsTemp[i] = dsSensors.getTempCByIndex(i);
-              if (i < 1) { outStr  = "T1  "; }
-              else       { outStr += "    T2  ";}
-              outStr += dsTemp[i];
-            }
-          */
-        #endif
-    }
+  //
+  #ifdef USE_BME280_I2C
+      String getBME280Str()
+        {
+          String _outS = "";
+          bme.init();
+          usleep(1000);
+          _outS  = ((String) ((int) (bme.readTemperature()         + 0.5))) + "° ";
+          usleep(1000);
+          _outS += ((String) ((int) (bme.readHumidity()            + 0.5))) + "% ";
+          usleep(1000);
+          _outS += ((String) ((int) ((bme.readPressure() / 100.0F) + 0.5))) + "mb";
+          //outS += "  Alt~ " + (String) bme280.readAltitude(1013.25);
+
+                  //SOUT(" BME280 "); SOUTLN(_outS);
+          return _outS;
+        }
+    #endif
 
 // --- end of implementation
 //
