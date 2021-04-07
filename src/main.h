@@ -2,6 +2,7 @@
   #define _MAIN_H_
 
   #include <Arduino.h>
+  #include <unity.h>
   #include <Wire.h>
   #include <TimeLib.h>
   //#include <Print.h>

@@ -1,5 +1,6 @@
 #include "main.h"
 
+
 // --- declarations
   // ------ system -----------------------
     uint16_t     md_error  = 0    // Error-Status bitkodiert -> 0: alles ok
@@ -340,7 +341,7 @@
                         SOUT(millis()); SOUT(" scanWIFI ret="); SOUTLN(ret);
               //ipList.~ip_list();
             }
-          ret = wifi.startWIFI();
+          ret = wifi.startWIFI(USE_LOCAL_IP);
                       SOUT("startWIFI ret="); SOUT(ret);
           md_error = setBit(md_error, ERRBIT_WIFI, ret);
                 #if (DEBUG_MODE >= CFG_DEBUG_DETAIL)
@@ -441,9 +442,9 @@
           SOUTLN(); SOUTLN("setup start ...");
 
           #ifdef SCAN_I2C
-              scanI2C(I2C1, 0, PIN_I2C1_SDA, PIN_I2C1_SCL);
+              scanI2C(I2C1, 0, SCAN_I2C, PIN_I2C1_SDA, PIN_I2C1_SCL);
               #if (ANZ_I2C > 1)
-                  scanI2C(I2C2, 0, PIN_I2C2_SDA, PIN_I2C2_SCL);
+                  scanI2C(I2C2, 0, SCAN_I2C, PIN_I2C2_SDA, PIN_I2C2_SCL);
                 #endif
             #endif
       //

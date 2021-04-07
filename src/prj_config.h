@@ -115,11 +115,11 @@
           #ifdef USE_DS18B20_1W
               #define DS_ONEWIRE_PIN  27
             #endif
-          #endif
+      #endif
 
       // --- I2C
         // --- board connection
-          #define ANZ_I2C           2
+          #define ANZ_I2C           1
           #define USE_I2C1          1
           #define PIN_I2C1_SDA      21
           #define PIN_I2C1_SCL      22
@@ -130,41 +130,41 @@
             #endif
     //
     #if !(BOARD ^ MC_ESP32_D1_R32)
-        #define USE_TASKING
-      // --- network
-        #define USE_WIFI
-        #define USE_WEBSERVER
-      // --- user interface
-        #define USE_DISP
-        #ifdef USE_DISP
-            #define USE_OLED_I2C
-            #ifdef USE_OLED_I2C
-                // select I2C device
-                #define OLED1 DISP_OLED_130_AZ_3V3
-                  #define OLED1_I2C_ADDR  0x3C
-                //#define OLED2 DISP_OLED_091_AZ_3V3
-                  #define OLED2_I2C_ADDR  0x3C
-                //#define OLED?  DISP_OLED_096_AZ_3V3
-              #endif //USE_OLED_I2C
+          #define USE_TASKING
+        // --- network
+          #define USE_WIFI
+          #define USE_WEBSERVER
+        // --- user interface
+          #define USE_DISP
+          #ifdef USE_DISP
+              #define USE_OLED_I2C
+              #ifdef USE_OLED_I2C
+                  // select I2C device
+                  #define OLED1 DISP_OLED_130_AZ_3V3
+                    #define OLED1_I2C_ADDR  0x3C
+                  //#define OLED2 DISP_OLED_091_AZ_3V3
+                    #define OLED2_I2C_ADDR  0x3C
+                  //#define OLED?  DISP_OLED_096_AZ_3V3
+                #endif //USE_OLED_I2C
 
-            //#define USE_TFT
-            #ifdef USE_TFT
-                    //#define USE_TFT1602_I2C_XA_3V3
-                    //#define USE_TOUCHXPT2046_AZ_3V3
-              #endif
-          #endif
-        //#define KEYS KEYS_TOUCHXPT2046_AZ_3V3
-        //#define USE_KEYPADSHIELD
-        //#define OUT1 AOUT_PAS_BUZZ_3V5V
-        #ifdef USE_KEYPADSHIELD
-            #define USE_TFT1602_GPIO_RO_3V3 // used by KEYPADSHIELD
-            #define KEYS KEYS_Keypad_ANA0_RO_3V3  // used by KEYPADSHIELD
-          #endif // USE_KEYPADSHIELD
-      // --- connections
-        #define I2C1_SDA   26 //21
-        #define I2C1_SCL   25 //22
-        #define I2C2_SDA   17
-        #define I2C2_SCL   16
+              //#define USE_TFT
+              #ifdef USE_TFT
+                      //#define USE_TFT1602_I2C_XA_3V3
+                      //#define USE_TOUCHXPT2046_AZ_3V3
+                #endif
+            #endif
+          //#define KEYS KEYS_TOUCHXPT2046_AZ_3V3
+          //#define USE_KEYPADSHIELD
+          //#define OUT1 AOUT_PAS_BUZZ_3V5V
+          #ifdef USE_KEYPADSHIELD
+              #define USE_TFT1602_GPIO_RO_3V3 // used by KEYPADSHIELD
+              #define KEYS KEYS_Keypad_ANA0_RO_3V3  // used by KEYPADSHIELD
+            #endif // USE_KEYPADSHIELD
+        // --- connections
+          #define I2C1_SDA   26 //21
+          #define I2C1_SCL   25 //22
+          #define I2C2_SDA   17
+          #define I2C2_SCL   16
       #endif
 
     //
@@ -208,16 +208,16 @@
       // --- address configuration
         #if defined( USE_OLED_I2C )
             #define I2C_ADDR_OLED1      I2C_OLED
-            #define I2C_OLED1_USE_I2C2
-              #if defined( I2C_OLED1_USE_I2C1 )
+            #define I2C_OLED1_USE_I2C1
+            #if defined( I2C_OLED1_USE_I2C1 )
                 #define I2C_OLED1       I2C1
                 #define I2C_SCL_OLED1   PIN_I2C1_SCL
                 #define I2C_SDA_OLED1   PIN_I2C1_SDA
               #else
-                  #define I2C_OLED1     I2C2
+                  #define I2C_OLED1     I2C
                   #define I2C_SCL_OLED1 PIN_I2C2_SCL
                   #define I2C_SDA_OLED1 PIN_I2C2_SDA
-                #endif
+              #endif
             #if (( ANZ_I2C > 1 ) && ( ANZ_OLED > 1 ))
                 #define I2C_ADDR_OLED2      I2C_OLED
                 #define I2C_OLED2_USE_I2C2
@@ -311,17 +311,15 @@
             #define WIFI_CONN_CYCLE 4000ul   // Intervallzeit fuer Recoonect [us]
             #define NTPSERVER_CYCLE 1000ul   // Intervallzeit [us]
 
-            #define USE_LOCAL_IP
-            #if defined(USE_LOCAL_IP)
-                #define WIFI_ANZ_LOCIP WIFI_ANZ_LOGIN
-                #define WIFI_FIXIP0    0x1400000Aul // 10.0.0.20   lowest first
-                #define WIFI_GATEWAY0  0x8B00000Aul // 10.0.0.139
-                #define WIFI_FIXIP1    0x1400000Aul // 10.0.0.20
-                #define WIFI_GATEWAY1  0x8B00000Aul // 10.0.0.139
-                #define WIFI_FIXIP2    0x1400000Aul // 10.0.0.20
-                #define WIFI_GATEWAY2  0x8a00000Aul // 10.0.0.138
-                #define WIFI_SUBNET    0x00FFFFFFul // 255.255.255.0
-              #endif
+            #define USE_LOCAL_IP    TRUE
+            #define WIFI_ANZ_LOCIP  WIFI_ANZ_LOGIN
+            #define WIFI_FIXIP0     0x1400000Aul // 10.0.0.20   lowest first
+            #define WIFI_GATEWAY0   0x8B00000Aul // 10.0.0.139
+            #define WIFI_FIXIP1     0x1400000Aul // 10.0.0.20
+            #define WIFI_GATEWAY1   0x8B00000Aul // 10.0.0.139
+            #define WIFI_FIXIP2     0x1400000Aul // 10.0.0.20
+            #define WIFI_GATEWAY2   0x8a00000Aul // 10.0.0.138
+            #define WIFI_SUBNET     0x00FFFFFFul // 255.255.255.0
           #endif
 
       //
