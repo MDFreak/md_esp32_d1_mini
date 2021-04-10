@@ -22,6 +22,10 @@
         TwoWire i2c2 = TwoWire(1);
       #endif
     //
+    #ifdef USE_LED_BLINK
+        msTimer ledT = msTimer(BLINKTIME_MS);
+        bool LED_ON = FALSE;
+      #endif
 //
     #ifdef USE_DISP
         msTimer       dispT  = msTimer(DISP_CYCLE);
@@ -35,6 +39,7 @@
       msTimer     statT  = msTimer(STAT_TIMEDEF);
       char        statOut[DISP1_MAXCOLS + 1] = "";
       bool        statOn = false;
+      bool        statDate = false;
       //char        timeOut[STAT_LINELEN + 1] = "";
       #endif
 
@@ -151,7 +156,16 @@
 
               if (!statOn) // disp actual time
                 {
-                  sprintf(statOut,"%02d.%02d. %02d:%02d:%02d ", day(), month(), hour(), minute(), second());
+                  if (DISP1_MAXCOLS>15)
+                      sprintf(statOut,"%02d.%02d. %02d:%02d:%02d ", day(), month(), hour(), minute(), second());
+                    else if(statDate == TRUE)
+                      sprintf(statOut,"%02d.%02d.%04d ", day(), month(), year());
+                    else
+                      sprintf(statOut,"%02d:%02d:%02d ", hour(), minute(), second());
+                  if (statDate)
+                      statDate = false;
+                    else
+                      statDate = true;
                   msg = statOut;
                   doIt = true;
                 }
@@ -440,7 +454,9 @@
         // start system
           Serial.begin(SER_BAUDRATE);
           SOUTLN(); SOUTLN("setup start ...");
-
+          #if defined(USE_LED_BLINK)
+              pinMode(PIN_BOARD_LED, OUTPUT);
+            #endif
           #ifdef SCAN_I2C
               scanI2C(I2C1, 0, SCAN_I2C, PIN_I2C1_SDA, PIN_I2C1_SCL);
               #if (ANZ_I2C > 1)
@@ -661,7 +677,7 @@
                 oledIdx++;
                 switch (oledIdx)
                   {
-                  case 1:
+                  case 1: // live show line 1
                     outStr = "0-0-6";
                     dispText(outStr ,  0, 0, 6);
                     outStr = "";
@@ -670,7 +686,7 @@
                     dispText(outStr , 14, 0, 6);
                       //SOUT((uint32_t) millis()); SOUT(" SW1 '"); SOUT(outBuf); SOUTLN("'");
                     break;
-                  case 2:
+                  case 2: // live show line 2
                     outStr = "";
                     dispText(outStr ,  0, 0, 6);
                     outStr = "7-1-6";
@@ -683,14 +699,18 @@
                   case 4:
                     break;
                   case 5:
-                    outStr = "";
-                    outStr = getDS18D20Str();
-                    dispText(outStr ,  0, 4, outStr.length());
+                    #ifdef USE_DS18B20_1W
+                        outStr = "";
+                        outStr = getDS18D20Str();
+                        dispText(outStr ,  0, 4, outStr.length());
+                      #endif
                     break;
                   case 6:
-                    outStr = getBME280Str();
-                            //SOUTLN(outStr);
-                    dispText(outStr ,  0, 3, outStr.length());
+                    #ifdef USE_BME280_I2C
+                        outStr = getBME280Str();
+                                //SOUTLN(outStr);
+                        dispText(outStr ,  0, 3, outStr.length());
+                      #endif
                     break;
                   default:
                     oledIdx = 0;
@@ -702,6 +722,23 @@
               #endif
           }
         #endif // defined(DISP)
+      // ----------------------
+      #if defined(USE_LED_BLINK)
+        if (ledT.TOut())    // handle touch output
+          {
+            if (LED_ON)
+                {
+                  digitalWrite(PIN_BOARD_LED, OFF);
+                  LED_ON = OFF;
+                }
+              else
+                {
+                  digitalWrite(PIN_BOARD_LED, ON);
+                  LED_ON = ON;
+                }
+            ledT.startT();
+          }
+        #endif
       // ----------------------
       sleep(1);
     }
